@@ -14,7 +14,7 @@
           config.allowUnfree = true;
         };
         pythonVersion = pkgs.python311;
-        nodeVersion = pkgs.nodejs_22; # Choose a specific Node.js version
+        nodeVersion = pkgs.nodejs_22;
 
       in
       {
@@ -23,74 +23,59 @@
           packages = [
             # Python tools
             pythonVersion
-            pkgs.uv # Fast Python package installer and resolver
-            pkgs.ruff # Python linter/formatter
+            pkgs.uv
+            pkgs.ruff
 
             # Node.js tools
             nodeVersion
-            pkgs.pnpm # PNPM package manager
+            pkgs.pnpm
 
             # Other tools
             pkgs.git
-            pkgs.docker-compose # For Docker Compose
-            pkgs.opentofu # Open-source Terraform alternative
-            pkgs.openssl # Often a dependency for various tools
-            pkgs.pkg-config # For building some native extensions
-            pkgs.glibcLocales # For locale settings that some tools might need
+            pkgs.docker-compose
+            pkgs.opentofu
+            pkgs.glibcLocales
           ];
 
           shellHook = ''
+            # Set up environment variables
             export PATH="$PWD/node_modules/.bin:$PATH"
             export PYTHONIOENCODING=UTF-8
             export LANG=en_US.UTF-8
             export LC_ALL=en_US.UTF-8
 
-            # Python virtual environment setup with uv
+            # Python virtual environment setup
             if [ ! -d ".venv" ]; then
               ${pythonVersion}/bin/python -m venv .venv
-              echo "Python virtual environment created with ${pythonVersion}."
+              echo "Created Python virtual environment"
             fi
             source .venv/bin/activate
 
-            # Only show version info on first load or when AUTODOCS_SHOW_INFO is set
+            # Only run setup on first load or when forced
             if [ ! -f ".direnv/autodocs-loaded" ] || [ "$AUTODOCS_SHOW_INFO" = "1" ]; then
-              echo "uv is available: $(uv --version)"
-
-              # Install Python dependencies from workspace only if needed
-              if [ ! -f ".venv/lib/python3.11/site-packages/ruff/__init__.py" ] || [ "apps/agent/pyproject.toml" -nt ".venv/pyvenv.cfg" ]; then
-                echo "Syncing Python workspace dependencies with uv..."
-                uv pip sync apps/agent/pyproject.toml --python .venv/bin/python
+              # Install Python dependencies if needed
+              if [ ! -f ".venv/lib/python3.11/site-packages/ruff/__init__.py" ] || \
+                 [ "apps/agent/pyproject.toml" -nt ".venv/pyvenv.cfg" ]; then
+                echo "Installing Python dependencies..."
+                uv pip sync apps/agent/pyproject.toml --python .venv/bin/python || exit 1
               fi
 
-              # Install Node.js dependencies only if needed
-              if [ ! -d "node_modules" ] || [ "pnpm-lock.yaml" -nt "node_modules/.pnpm/lock.yaml" ] 2>/dev/null; then
-                echo "Installing Node.js dependencies with pnpm..."
-                pnpm install --frozen-lockfile
+              # Install Node.js dependencies if needed
+              if [ ! -d "node_modules" ] || \
+                 [ "pnpm-lock.yaml" -nt "node_modules/.pnpm/lock.yaml" ] 2>/dev/null; then
+                echo "Installing Node.js dependencies..."
+                pnpm install --frozen-lockfile || exit 1
               fi
 
-              echo "Development environment ready!"
-              echo "--------------------------------------------------"
-              echo "Key tools available:"
-              echo "- Python: $(${pythonVersion}/bin/python --version)"
-              echo "- uv: $(uv --version)"
-              echo "- Ruff: $(ruff --version)"
-              echo "- Node.js: $(node --version)"
-              echo "- pnpm: $(pnpm --version)"
-              echo "- Docker Compose: $(docker-compose --version)"
-              echo "- OpenTofu: $(tofu --version)"
-              echo "--------------------------------------------------"
-              echo "Run 'exit' to leave this Nix shell."
+              # Show environment info
+              echo "Environment ready! Tools:"
+              echo "Python $(python --version) | Node $(node --version) | pnpm $(pnpm --version)"
 
               # Mark as loaded
               mkdir -p .direnv
               touch .direnv/autodocs-loaded
             fi
           '';
-
-          # Environment variables for VSCode or other tools
-          # These help tools find the correct interpreters and configurations
-          RUST_SRC_PATH = "${pkgs.rustPlatform.rustLibSrc}";
-
         };
       }
     );
