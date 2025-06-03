@@ -52,32 +52,39 @@
             fi
             source .venv/bin/activate
 
-            # uv is now available natively from Nix
-            echo "uv is available: $(uv --version)"
+            # Only show version info on first load or when AUTODOCS_SHOW_INFO is set
+            if [ ! -f ".direnv/autodocs-loaded" ] || [ "$AUTODOCS_SHOW_INFO" = "1" ]; then
+              echo "uv is available: $(uv --version)"
 
-            # Install Python dependencies from workspace
-            echo "Syncing Python workspace dependencies with uv..."
-            uv pip sync apps/agent/pyproject.toml --python .venv/bin/python
+              # Install Python dependencies from workspace only if needed
+              if [ ! -f ".venv/lib/python3.11/site-packages/ruff/__init__.py" ] || [ "apps/agent/pyproject.toml" -nt ".venv/pyvenv.cfg" ]; then
+                echo "Syncing Python workspace dependencies with uv..."
+                uv pip sync apps/agent/pyproject.toml --python .venv/bin/python
+              fi
 
-            # Consider a workspace-level sync if your uv version supports it well for all projects
+              # Install Node.js dependencies only if needed
+              if [ ! -d "node_modules" ] || [ "pnpm-lock.yaml" -nt "node_modules/.pnpm/lock.yaml" ] 2>/dev/null; then
+                echo "Installing Node.js dependencies with pnpm..."
+                pnpm install --frozen-lockfile
+              fi
 
+              echo "Development environment ready!"
+              echo "--------------------------------------------------"
+              echo "Key tools available:"
+              echo "- Python: $(${pythonVersion}/bin/python --version)"
+              echo "- uv: $(uv --version)"
+              echo "- Ruff: $(ruff --version)"
+              echo "- Node.js: $(node --version)"
+              echo "- pnpm: $(pnpm --version)"
+              echo "- Docker Compose: $(docker-compose --version)"
+              echo "- OpenTofu: $(tofu --version)"
+              echo "--------------------------------------------------"
+              echo "Run 'exit' to leave this Nix shell."
 
-            # Install Node.js dependencies
-            echo "Installing Node.js dependencies with pnpm..."
-            pnpm install --frozen-lockfile
-
-            echo "Development environment ready!"
-            echo "--------------------------------------------------"
-            echo "Key tools available:"
-            echo "- Python: $(${pythonVersion}/bin/python --version)"
-            echo "- uv: $(uv --version)"
-            echo "- Ruff: $(ruff --version)"
-            echo "- Node.js: $(node --version)"
-            echo "- pnpm: $(pnpm --version)"
-            echo "- Docker Compose: $(docker-compose --version)"
-            echo "- OpenTofu: $(tofu --version)"
-            echo "--------------------------------------------------"
-            echo "Run 'exit' to leave this Nix shell."
+              # Mark as loaded
+              mkdir -p .direnv
+              touch .direnv/autodocs-loaded
+            fi
           '';
 
           # Environment variables for VSCode or other tools
