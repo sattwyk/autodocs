@@ -22,11 +22,9 @@ result/
 .nix-result
 *.drv
 *.gcno
-flake.lock
 
 # direnv
 .direnv/
-.envrc
 
 # Environment
 .env
