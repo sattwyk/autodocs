@@ -29,12 +29,8 @@
             # Node.js tools
             nodeVersion
             pkgs.pnpm # PNPM package manager
-            pkgs.nodePackages.typescript # Global TypeScript for LSP
-            pkgs.biome # Biome for JS/TS linting/formatting
-            pkgs.turbo # Turborepo CLI
 
             # Other tools
-            pkgs.pre-commit # For pre-commit hooks
             pkgs.git
             pkgs.docker-compose # For Docker Compose
             pkgs.opentofu # Open-source Terraform alternative
@@ -62,8 +58,7 @@
             # Install Python dependencies from workspace
             echo "Syncing Python workspace dependencies with uv..."
             uv pip sync apps/agent/pyproject.toml --python .venv/bin/python
-            uv pip sync apps/bots/whatsapp/pyproject.toml --python .venv/bin/python
-            uv pip sync apps/bots/telegram/pyproject.toml --python .venv/bin/python
+
             # Consider a workspace-level sync if your uv version supports it well for all projects
 
 
@@ -79,12 +74,8 @@
             echo "- Ruff: $(ruff --version)"
             echo "- Node.js: $(node --version)"
             echo "- pnpm: $(pnpm --version)"
-            echo "- TypeScript: $(tsc --version)"
-            echo "- Biome: $(biome --version)"
-            echo "- Turborepo: $(turbo --version)"
             echo "- Docker Compose: $(docker-compose --version)"
             echo "- OpenTofu: $(tofu --version)"
-            echo "- pre-commit: $(pre-commit --version)"
             echo "--------------------------------------------------"
             echo "Run 'exit' to leave this Nix shell."
           '';

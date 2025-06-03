@@ -1,0 +1,13 @@
+{
+	"name": "agent",
+	"version": "0.1.0",
+	"private": true,
+	"scripts": {
+		"dev": "uv run python main.py",
+		"py:lint": "uv run ruff check .",
+		"py:format": "uv run ruff format .",
+		"py:test": "uv run python -m pytest",
+		"py:run": "uv run python main.py",
+		"install": "uv sync"
+	}
+}

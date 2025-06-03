@@ -1,0 +1,12 @@
+{
+	"recommendations": [
+		"biomejs.biome",
+		"gamunu.opentofu",
+		"charliermarsh.ruff",
+		"ms-azuretools.vscode-docker",
+		"docker.docker",
+		"bradlc.vscode-tailwindcss",
+		"editorconfig.editorconfig",
+		"bbenoist.nix"
+	]
+}

@@ -1,0 +1,30 @@
+{
+	"name": "autodocs",
+	"version": "1.0.0",
+	"description": "",
+	"scripts": {
+		"dev": "turbo dev",
+		"build": "turbo build",
+		"start": "turbo start",
+		"lint": "turbo lint",
+		"format": "biome format --write .",
+		"type-check": "turbo type-check",
+		"test": "turbo test",
+		"prepare": "husky"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "MIT",
+	"packageManager": "pnpm@10.11.0",
+	"devDependencies": {
+		"@biomejs/biome": "^1.9.4",
+		"husky": "^9.1.7",
+		"lint-staged": "^16.1.0",
+		"turbo": "^2.5.4",
+		"typescript": "^5.8.3"
+	},
+	"lint-staged": {
+		"*.{js,jsx,ts,tsx}": "biome format --write",
+		"*.py": ["uv run ruff check --fix", "uv run ruff format"]
+	}
+}

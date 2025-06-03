@@ -1,0 +1,6 @@
+{
+	"extends": ["@autodocs/biome-config"],
+	"files": {
+		"ignore": ["*.py", "**/*.py", "__pycache__/**", ".venv/**"]
+	}
+}

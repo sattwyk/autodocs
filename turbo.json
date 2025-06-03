@@ -1,0 +1,52 @@
+{
+	"$schema": "https://turborepo.com/schema.json",
+	"globalDependencies": [
+		"**/.env.*local",
+		"biome.json",
+		"**/biome.json",
+		"tsconfig.json",
+		"**/tsconfig.json",
+		"pyproject.toml"
+	],
+	"globalEnv": ["NODE_ENV", "DATABASE_URL", "REDIS_URL"],
+	"tasks": {
+		"build": {
+			"dependsOn": ["^build", "type-check"],
+			"outputs": [".next/**", "!.next/cache/**", "dist/**", "build/**"]
+		},
+		"lint": {
+			"dependsOn": ["^lint"]
+		},
+		"format": {
+			"dependsOn": ["^format"]
+		},
+		"type-check": {
+			"dependsOn": ["^type-check"]
+		},
+		"test": {
+			"dependsOn": ["^build"],
+			"outputs": ["coverage/**", ".nyc_output/**"]
+		},
+		"clean": {
+			"cache": false
+		},
+		"dev": {
+			"cache": false,
+			"persistent": true
+		},
+		"py:lint": {
+			"dependsOn": ["^py:lint"]
+		},
+		"py:format": {
+			"dependsOn": ["^py:format"]
+		},
+		"py:test": {
+			"dependsOn": ["^py:test"],
+			"outputs": ["coverage/**", ".coverage"]
+		},
+		"py:run": {
+			"cache": false,
+			"persistent": true
+		}
+	}
+}

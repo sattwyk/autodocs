@@ -1,0 +1,8 @@
+{
+	"name": "@autodocs/biome-config",
+	"version": "1.0.0",
+	"private": true,
+	"exports": {
+		".": "./biome.json"
+	}
+}

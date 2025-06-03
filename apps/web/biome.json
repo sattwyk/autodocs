@@ -1,0 +1,18 @@
+{
+	"extends": ["@autodocs/biome-config"],
+	"files": {
+		"ignore": [".next/**"]
+	},
+	"overrides": [
+		{
+			"include": ["app/**"],
+			"linter": {
+				"rules": {
+					"suspicious": {
+						"noConsoleLog": "off"
+					}
+				}
+			}
+		}
+	]
+}

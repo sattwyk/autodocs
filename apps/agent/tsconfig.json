@@ -1,0 +1,5 @@
+{
+	"extends": "@autodocs/typescript-config/node",
+	"include": ["**/*.ts", "**/*.js"],
+	"exclude": ["node_modules", "*.py", "**/*.py", "__pycache__", ".venv"]
+}

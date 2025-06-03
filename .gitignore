@@ -1,0 +1,50 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.pdm.toml
+*.pdm.lock
+
+# Node.js
+node_modules/
+dist/
+build/
+.pnpm-debug.log*
+
+# pnpm
+pnpm-lock.yaml
+
+# Nix
+result/
+.nix-result
+*.drv
+*.gcno
+
+# direnv
+.direnv/
+.envrc
+
+# Environment
+.env
+.env.*
+
+# macOS
+.DS_Store
+
+# System
+Thumbs.db
+
+# Subproject ignores (apps/*)
+apps/*/node_modules/
+apps/*/.venv/
+apps/*/__pycache__/
+apps/*/dist/
+apps/*/build/
+
+# Misc
+*.log
+
+.turbo

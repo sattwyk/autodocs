@@ -1,0 +1,43 @@
+{
+	"extends": ["./tooling/biome/biome.json"],
+	"files": {
+		"ignoreUnknown": false,
+		"ignore": ["apps/web/.next/**"]
+	},
+	"formatter": {
+		"enabled": true,
+		"indentStyle": "tab"
+	},
+	"organizeImports": {
+		"enabled": true
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"recommended": true
+		}
+	},
+	"javascript": {
+		"formatter": {
+			"quoteStyle": "double"
+		}
+	},
+	"overrides": [
+		{
+			"include": ["packages/db/**"],
+			"formatter": {
+				"indentStyle": "space"
+			}
+		},
+		{
+			"include": ["apps/web/**"],
+			"linter": {
+				"rules": {
+					"suspicious": {
+						"noConsoleLog": "off"
+					}
+				}
+			}
+		}
+	]
+}
