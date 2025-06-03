@@ -1,3 +1,107 @@
 {
-	"typescript.tsdk": "node_modules/typescript/lib"
+	"[python]": {
+		"editor.defaultFormatter": "charliermarsh.ruff",
+		"editor.formatOnSave": true,
+		"editor.codeActionsOnSave": {
+			"source.fixAll": "explicit",
+			"source.organizeImports": "explicit"
+		}
+	},
+	"[typescript]": {
+		"editor.defaultFormatter": "biomejs.biome",
+		"editor.formatOnSave": true,
+		"editor.codeActionsOnSave": {
+			"source.organizeImports.biome": "explicit"
+		}
+	},
+	"[typescriptreact]": {
+		"editor.defaultFormatter": "biomejs.biome",
+		"editor.formatOnSave": true,
+		"editor.codeActionsOnSave": {
+			"source.organizeImports.biome": "explicit"
+		}
+	},
+	"[javascript]": {
+		"editor.defaultFormatter": "biomejs.biome",
+		"editor.formatOnSave": true,
+		"editor.codeActionsOnSave": {
+			"source.organizeImports.biome": "explicit"
+		}
+	},
+	"[javascriptreact]": {
+		"editor.defaultFormatter": "biomejs.biome",
+		"editor.formatOnSave": true,
+		"editor.codeActionsOnSave": {
+			"source.organizeImports.biome": "explicit"
+		}
+	},
+	"[json]": {
+		"editor.defaultFormatter": "biomejs.biome",
+		"editor.formatOnSave": true
+	},
+	"[jsonc]": {
+		"editor.defaultFormatter": "biomejs.biome",
+		"editor.formatOnSave": true
+	},
+	"[terraform]": {
+		"editor.defaultFormatter": "gamunu.opentofu",
+		"editor.formatOnSave": true,
+		"editor.codeActionsOnSave": {
+			"source.fixAll": "explicit"
+		}
+	},
+	"[terraform-vars]": {
+		"editor.defaultFormatter": "gamunu.opentofu",
+		"editor.formatOnSave": true
+	},
+	"[dockerfile]": {
+		"editor.defaultFormatter": "ms-azuretools.vscode-containers",
+		"editor.formatOnSave": true
+	},
+	"[dockercompose]": {
+		"editor.defaultFormatter": "ms-azuretools.vscode-containers",
+		"editor.formatOnSave": true
+	},
+	"[yaml]": {
+		"editor.defaultFormatter": "redhat.vscode-yaml",
+		"editor.formatOnSave": true,
+		"editor.insertSpaces": true,
+		"editor.tabSize": 2
+	},
+	"typescript.tsdk": "node_modules/typescript/lib",
+	"python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+	"python.terminal.activateEnvironment": true,
+	"python.analysis.autoSearchPaths": true,
+	"editor.formatOnSave": true,
+	"editor.codeActionsOnSave": {
+		"source.fixAll": "explicit",
+		"source.organizeImports": "explicit"
+	},
+	"files.exclude": {
+		"**/.git": true,
+		"**/.svn": true,
+		"**/.hg": true,
+		"**/CVS": true,
+		"**/.DS_Store": true,
+		"**/Thumbs.db": true,
+		"**/.turbo": true,
+		"**/node_modules": true,
+		"**/.next": true,
+		"**/.ruff_cache": true,
+		"**/__pycache__": true,
+		"**/*.pyc": true,
+		"**/tsconfig.tsbuildinfo": true
+	},
+	"search.exclude": {
+		"**/node_modules": true,
+		"**/bower_components": true,
+		"**/*.code-search": true,
+		"**/.turbo": true,
+		"**/.next": true,
+		"**/.ruff_cache": true,
+		"**/__pycache__": true,
+		"**/*.pyc": true,
+		"**/tsconfig.tsbuildinfo": true
+	},
+	"typescript.preferences.includePackageJsonAutoImports": "auto"
 }
