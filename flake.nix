@@ -15,6 +15,7 @@
         };
         pythonVersion = pkgs.python311;
         nodeVersion = pkgs.nodejs_22;
+        goVersion = pkgs.go_1_23;
 
       in
       {
@@ -30,6 +31,11 @@
             nodeVersion
             pkgs.pnpm
 
+            # Go tools
+            goVersion
+            pkgs.gopls
+            pkgs.delve
+
             # Other tools
             pkgs.git
             pkgs.docker-compose
@@ -43,6 +49,12 @@
             export PYTHONIOENCODING=UTF-8
             export LANG=en_US.UTF-8
             export LC_ALL=en_US.UTF-8
+
+            # Go environment setup
+            export GOPATH="$PWD/.go"
+            export GOCACHE="$PWD/.go/cache"
+            export PATH="$GOPATH/bin:$PATH"
+            mkdir -p "$GOPATH/bin"
 
             # Python virtual environment setup
             if [ ! -d ".venv" ]; then
@@ -69,7 +81,7 @@
 
               # Show environment info
               echo "Environment ready! Tools:"
-              echo "Python $(python --version) | Node $(node --version) | pnpm $(pnpm --version)"
+              echo "Python $(python --version) | Node $(node --version) | pnpm $(pnpm --version) | Go $(go version)"
 
               # Mark as loaded
               mkdir -p .direnv

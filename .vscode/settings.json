@@ -43,6 +43,19 @@
 		"editor.defaultFormatter": "biomejs.biome",
 		"editor.formatOnSave": true
 	},
+	"[go]": {
+		"editor.formatOnSave": true,
+		"editor.codeActionsOnSave": {
+			"source.organizeImports": "explicit",
+			"source.fixAll": "explicit"
+		}
+	},
+	"[go.mod]": {
+		"editor.formatOnSave": true,
+		"editor.codeActionsOnSave": {
+			"source.organizeImports": "explicit"
+		}
+	},
 	"[terraform]": {
 		"editor.defaultFormatter": "gamunu.opentofu",
 		"editor.formatOnSave": true,
@@ -72,6 +85,15 @@
 	"python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
 	"python.terminal.activateEnvironment": true,
 	"python.analysis.autoSearchPaths": true,
+	"go.gopath": "${workspaceFolder}/.go",
+	"go.goroot": "",
+	"go.toolsManagement.autoUpdate": true,
+	"go.useLanguageServer": true,
+	"go.lintOnSave": "package",
+	"go.formatTool": "goimports",
+	"go.lintTool": "golangci-lint",
+	"go.testFlags": ["-v"],
+	"go.buildOnSave": "package",
 	"editor.formatOnSave": true,
 	"editor.codeActionsOnSave": {
 		"source.fixAll": "explicit",
