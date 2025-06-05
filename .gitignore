@@ -47,3 +47,11 @@ apps/*/build/
 *.log
 
 .turbo
+
+# Go
+.go/
+.go-cache/
+.go-build/
+.go-test/
+.go-test-cache/
+.go-test-build/
