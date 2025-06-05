@@ -1,0 +1,65 @@
+# GitHub Crawler Service Configuration
+
+# Server Configuration
+PORT=8080
+HOST=0.0.0.0
+ENVIRONMENT=development
+
+# GitHub API Configuration
+GITHUB_BASE_URL=https://api.github.com
+
+# Authentication - Choose one method:
+
+# Option 1: Personal Access Token (PAT)
+# Generate at: https://github.com/settings/tokens
+# Required scopes: repo (for private repos), public_repo (for public repos)
+GITHUB_TOKEN=ghp_your_personal_access_token_here
+
+# Option 2: GitHub App (Recommended for production)
+# Create at: https://github.com/settings/apps
+# GITHUB_APP_ID=123456
+# GITHUB_APP_KEY="-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----"
+# GITHUB_INSTALL_ID=12345678
+
+# Worker Pool Configuration
+MAX_WORKERS=50
+MAX_CONCURRENT_FETCHES=100
+
+# Rate Limiting
+# GitHub API rate limits:
+# - Personal Access Token: 5,000/hour
+# - GitHub App: 15,000/hour per installation
+API_RATE_LIMIT_THRESHOLD=100
+
+# Timeouts and Retries
+FETCH_TIMEOUT_MS=30000
+RETRY_MAX_ATTEMPTS=3
+RETRY_BACKOFF_MS_BASE=1000
+
+# Resource Limits
+MAX_FILE_SIZE=10485760  # 10MB in bytes
+
+# Observability
+LOG_LEVEL=info
+METRICS_PATH=/metrics
+
+# Performance Tuning Examples:
+
+# For small repositories (<1000 files):
+# MAX_WORKERS=20
+# MAX_CONCURRENT_FETCHES=50
+
+# For medium repositories (1000-10000 files):
+# MAX_WORKERS=50
+# MAX_CONCURRENT_FETCHES=100
+
+# For large repositories (>10000 files):
+# MAX_WORKERS=100
+# MAX_CONCURRENT_FETCHES=200
+
+# Production Configuration Example:
+# ENVIRONMENT=production
+# LOG_LEVEL=warn
+# MAX_WORKERS=100
+# API_RATE_LIMIT_THRESHOLD=200
+# FETCH_TIMEOUT_MS=60000
