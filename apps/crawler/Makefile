@@ -18,10 +18,7 @@ build:
 ## Run the application (requires GITHUB_TOKEN)
 run: build
 	@echo "Starting $(BINARY_NAME)..."
-	@if [ -z "$(GITHUB_TOKEN)" ]; then \
-		echo "Warning: GITHUB_TOKEN not set. Set it for full functionality."; \
-	fi
-	./$(BINARY_NAME)
+	@./$(BINARY_NAME)
 
 ## Run with sample token (for testing without real token)
 run-dev: build
@@ -33,10 +30,41 @@ test:
 	@echo "Running Go tests..."
 	go test -v ./...
 
+## Run tests with coverage
+test-coverage:
+	@echo "Running tests with coverage..."
+	go test -v -coverprofile=coverage.out ./...
+	go tool cover -html=coverage.out -o coverage.html
+	@echo "Coverage report generated: coverage.html"
+
+## Run unit tests only
+test-unit:
+	@echo "Running unit tests..."
+	go test -v -short ./...
+
+## Run integration tests only
+test-integration-go:
+	@echo "Running Go integration tests..."
+	go test -v -run TestIntegration ./...
+
+## Run benchmarks
+test-bench:
+	@echo "Running benchmarks..."
+	go test -v -bench=. -benchmem ./...
+
+## Run tests with race detection
+test-race:
+	@echo "Running tests with race detection..."
+	go test -v -race ./...
+
+## Run all test suites
+test-all: test-unit test-integration-go test-bench test-coverage
+	@echo "All tests completed!"
+
 ## Run integration tests (requires service to be running)
 test-integration:
 	@echo "Running integration tests..."
-	./test.sh
+	@./test.sh
 
 ## Download dependencies
 deps:

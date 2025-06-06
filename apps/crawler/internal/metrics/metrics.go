@@ -1,6 +1,8 @@
 package metrics
 
 import (
+	"sync"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -29,12 +31,35 @@ type Metrics struct {
 
 	// Resource metrics
 	FileSizeBytes *prometheus.HistogramVec
+
+	// registry for testing
+	registry prometheus.Registerer
 }
+
+var (
+	globalMetrics *Metrics
+	metricsOnce   sync.Once
+)
 
 // New creates and registers all Prometheus metrics
 func New() *Metrics {
+	metricsOnce.Do(func() {
+		globalMetrics = newMetrics(prometheus.DefaultRegisterer)
+	})
+	return globalMetrics
+}
+
+// NewForTesting creates metrics with a custom registry for testing
+func NewForTesting() *Metrics {
+	return newMetrics(prometheus.NewRegistry())
+}
+
+// newMetrics creates metrics with the specified registerer
+func newMetrics(registerer prometheus.Registerer) *Metrics {
+	factory := promauto.With(registerer)
+
 	return &Metrics{
-		HTTPRequestsTotal: promauto.NewCounterVec(
+		HTTPRequestsTotal: factory.NewCounterVec(
 			prometheus.CounterOpts{
 				Name: "crawler_http_requests_total",
 				Help: "Total number of HTTP requests received",
@@ -42,7 +67,7 @@ func New() *Metrics {
 			[]string{"method", "path", "status"},
 		),
 
-		HTTPRequestDuration: promauto.NewHistogramVec(
+		HTTPRequestDuration: factory.NewHistogramVec(
 			prometheus.HistogramOpts{
 				Name:    "crawler_http_request_duration_seconds",
 				Help:    "Duration of HTTP requests in seconds",
@@ -51,7 +76,7 @@ func New() *Metrics {
 			[]string{"method", "path"},
 		),
 
-		FilesRequestedTotal: promauto.NewCounterVec(
+		FilesRequestedTotal: factory.NewCounterVec(
 			prometheus.CounterOpts{
 				Name: "crawler_files_requested_total",
 				Help: "Total number of files requested for crawling",
@@ -59,7 +84,7 @@ func New() *Metrics {
 			[]string{"repo_owner", "repo_name"},
 		),
 
-		FilesProcessedTotal: promauto.NewCounterVec(
+		FilesProcessedTotal: factory.NewCounterVec(
 			prometheus.CounterOpts{
 				Name: "crawler_files_processed_total",
 				Help: "Total number of files successfully processed",
@@ -67,7 +92,7 @@ func New() *Metrics {
 			[]string{"repo_owner", "repo_name", "status"},
 		),
 
-		ErrorsTotal: promauto.NewCounterVec(
+		ErrorsTotal: factory.NewCounterVec(
 			prometheus.CounterOpts{
 				Name: "crawler_errors_total",
 				Help: "Total number of errors encountered",
@@ -75,14 +100,14 @@ func New() *Metrics {
 			[]string{"type", "repo_owner", "repo_name"},
 		),
 
-		ConcurrencyInUse: promauto.NewGauge(
+		ConcurrencyInUse: factory.NewGauge(
 			prometheus.GaugeOpts{
 				Name: "crawler_concurrency_in_use",
 				Help: "Number of concurrent operations currently in progress",
 			},
 		),
 
-		GitHubAPICallsTotal: promauto.NewCounterVec(
+		GitHubAPICallsTotal: factory.NewCounterVec(
 			prometheus.CounterOpts{
 				Name: "crawler_github_api_calls_total",
 				Help: "Total number of GitHub API calls made",
@@ -90,35 +115,35 @@ func New() *Metrics {
 			[]string{"endpoint", "status"},
 		),
 
-		GitHubRateLimitUsed: promauto.NewGauge(
+		GitHubRateLimitUsed: factory.NewGauge(
 			prometheus.GaugeOpts{
 				Name: "crawler_github_rate_limit_used",
 				Help: "Number of GitHub API rate limit requests used",
 			},
 		),
 
-		GitHubRateLimitLimit: promauto.NewGauge(
+		GitHubRateLimitLimit: factory.NewGauge(
 			prometheus.GaugeOpts{
 				Name: "crawler_github_rate_limit_limit",
 				Help: "GitHub API rate limit maximum",
 			},
 		),
 
-		WorkerPoolSize: promauto.NewGauge(
+		WorkerPoolSize: factory.NewGauge(
 			prometheus.GaugeOpts{
 				Name: "crawler_worker_pool_size",
 				Help: "Current size of the worker pool",
 			},
 		),
 
-		QueueDepth: promauto.NewGauge(
+		QueueDepth: factory.NewGauge(
 			prometheus.GaugeOpts{
 				Name: "crawler_queue_depth",
 				Help: "Current depth of the task queue",
 			},
 		),
 
-		TaskDuration: promauto.NewHistogramVec(
+		TaskDuration: factory.NewHistogramVec(
 			prometheus.HistogramOpts{
 				Name:    "crawler_task_duration_seconds",
 				Help:    "Duration of individual tasks in seconds",
@@ -127,7 +152,7 @@ func New() *Metrics {
 			[]string{"task_type"},
 		),
 
-		FileSizeBytes: promauto.NewHistogramVec(
+		FileSizeBytes: factory.NewHistogramVec(
 			prometheus.HistogramOpts{
 				Name:    "crawler_file_size_bytes",
 				Help:    "Size of processed files in bytes",
@@ -135,6 +160,8 @@ func New() *Metrics {
 			},
 			[]string{"repo_owner", "repo_name"},
 		),
+
+		registry: registerer,
 	}
 }
 

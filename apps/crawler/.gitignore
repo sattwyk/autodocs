@@ -17,3 +17,13 @@ crawler
 
 # Go workspace file
 go.work
+
+# Environment files with secrets (NEVER commit these!)
+.env
+.env.local
+.env.*.local
+*.env
+
+# Configuration files with secrets
+config.local
+config.*.local

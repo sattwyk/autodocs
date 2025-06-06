@@ -4,8 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"path/filepath"
+	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/sattwyk/autodocs/apps/crawler/internal/config"
 	"github.com/sattwyk/autodocs/apps/crawler/internal/github"
@@ -199,24 +202,38 @@ func (p *Pool) processTask(workerID int, task model.WorkerTask) model.FileResult
 		p.metrics.RecordError("fetch_failed", owner, repo)
 		p.metrics.RecordFileProcessed(owner, repo, "failed")
 		log.Printf("Worker %d: failed to fetch %s: %v", workerID, task.Path, err)
-	} else {
-		result.Content = content
-		result.Size = len(content)
-		p.metrics.RecordFileProcessed(owner, repo, "success")
-		p.metrics.RecordFileSize(owner, repo, float64(len(content)))
-		log.Printf("Worker %d: successfully fetched %s (%d bytes)", workerID, task.Path, len(content))
+		return result
 	}
+
+	// Binary detection
+	if p.config.EnableBinaryDetection && p.IsBinaryContent(content) {
+		result.Error = fmt.Errorf("skipping binary file")
+		p.metrics.RecordError("binary_file_skipped", owner, repo)
+		p.metrics.RecordFileProcessed(owner, repo, "skipped_binary")
+		log.Printf("Worker %d: skipped binary file %s", workerID, task.Path)
+		return result
+	}
+
+	// UTF-8 validation
+	if !utf8.Valid(content) {
+		result.Error = fmt.Errorf("file content is not valid UTF-8")
+		p.metrics.RecordError("invalid_utf8", owner, repo)
+		p.metrics.RecordFileProcessed(owner, repo, "skipped_invalid_encoding")
+		log.Printf("Worker %d: skipped non-UTF-8 file %s", workerID, task.Path)
+		return result
+	}
+
+	result.Content = content
+	result.Size = len(content)
+	p.metrics.RecordFileProcessed(owner, repo, "success")
+	p.metrics.RecordFileSize(owner, repo, float64(len(content)))
+	log.Printf("Worker %d: successfully fetched %s (%d bytes)", workerID, task.Path, len(content))
 
 	// Record task duration
 	duration := time.Since(startTime).Seconds()
 	p.metrics.RecordTaskDuration("file_fetch", duration)
 
 	return result
-}
-
-// extractRepoInfo extracts repository information from task
-func (p *Pool) extractRepoInfo(task model.WorkerTask) (owner, repo string) {
-	return task.Owner, task.Repo
 }
 
 // CrawlRepository crawls an entire repository
@@ -328,17 +345,98 @@ func (p *Pool) CrawlRepository(ctx context.Context, owner, repo, ref string, pat
 	return response, nil
 }
 
-// shouldProcessFile determines if a file should be processed based on path filters
+// shouldProcessFile determines if a file should be processed based on path filters and file extensions
 func (p *Pool) shouldProcessFile(path string, pathFilter []string) bool {
-	if len(pathFilter) == 0 {
-		return true
+	// Check path filters first (existing logic)
+	if len(pathFilter) > 0 {
+		matchesFilter := false
+		for _, filter := range pathFilter {
+			if len(path) >= len(filter) && path[:len(filter)] == filter {
+				matchesFilter = true
+				break
+			}
+		}
+		if !matchesFilter {
+			return false
+		}
 	}
 
-	for _, filter := range pathFilter {
-		if len(path) >= len(filter) && path[:len(filter)] == filter {
+	// Check file extension
+	if len(p.config.AllowedExtensions) > 0 {
+		return p.IsAllowedFileType(path)
+	}
+
+	return true
+}
+
+// IsAllowedFileType checks if the file extension is in the allowed list
+func (p *Pool) IsAllowedFileType(path string) bool {
+	if len(p.config.AllowedExtensions) == 0 {
+		return true // No restrictions if no extensions configured
+	}
+
+	ext := strings.ToLower(filepath.Ext(path))
+	filename := strings.ToLower(filepath.Base(path))
+
+	// Check extension
+	for _, allowedExt := range p.config.AllowedExtensions {
+		if ext == allowedExt {
+			return true
+		}
+	}
+
+	// Check special filenames (dockerfile, makefile, etc.)
+	specialFiles := []string{
+		"dockerfile", "makefile", "rakefile", "gemfile", "guardfile",
+		"capfile", "berksfile", "cheffile", "vagrantfile", "fastfile",
+		"appfile", "deliverfile", "matchfile", "gymfile", "scanfile",
+		"snapfile", "podfile", "cartfile", "brewfile", "requirements.txt",
+		"setup.py", "setup.cfg", "pyproject.toml", "pipfile", "poetry.lock",
+		"package.json", "package-lock.json", "yarn.lock", "pnpm-lock.yaml",
+		"composer.json", "composer.lock", "go.mod", "go.sum", "cargo.toml",
+		"cargo.lock", "build.gradle", "pom.xml", "build.sbt", "mix.exs",
+		"deps.edn", "project.clj", "stack.yaml", "cabal.project",
+	}
+
+	for _, special := range specialFiles {
+		if filename == special {
 			return true
 		}
 	}
 
 	return false
+}
+
+// IsBinaryContent detects if content is binary by checking for null bytes and non-printable characters
+func (p *Pool) IsBinaryContent(content []byte) bool {
+	if len(content) == 0 {
+		return false
+	}
+
+	// Check first 8KB for binary indicators
+	checkSize := 8192
+	if len(content) < checkSize {
+		checkSize = len(content)
+	}
+
+	sample := content[:checkSize]
+
+	// Check for null bytes (strong binary indicator)
+	for _, b := range sample {
+		if b == 0 {
+			return true
+		}
+	}
+
+	// Check ratio of non-printable characters
+	nonPrintable := 0
+	for _, b := range sample {
+		// Consider bytes outside ASCII printable range (32-126) and common whitespace (9, 10, 13)
+		if b < 9 || (b > 13 && b < 32) || b > 126 {
+			nonPrintable++
+		}
+	}
+
+	// If more than 30% non-printable, consider it binary
+	return float64(nonPrintable)/float64(len(sample)) > 0.30
 }

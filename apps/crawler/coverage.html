@@ -1,0 +1,1621 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>crawler: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+
+				<option value="file0">github.com/sattwyk/autodocs/apps/crawler/cmd/crawler/main.go (68.8%)</option>
+
+				<option value="file1">github.com/sattwyk/autodocs/apps/crawler/internal/config/config.go (79.2%)</option>
+
+				<option value="file2">github.com/sattwyk/autodocs/apps/crawler/internal/github/client.go (60.2%)</option>
+
+				<option value="file3">github.com/sattwyk/autodocs/apps/crawler/internal/metrics/metrics.go (84.2%)</option>
+
+				<option value="file4">github.com/sattwyk/autodocs/apps/crawler/internal/worker/pool.go (54.4%)</option>
+
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+
+			</div>
+		</div>
+		<div id="content">
+
+		<pre class="file" id="file0" style="display: none">package main
+
+import (
+        "context"
+        "encoding/json"
+        "fmt"
+        "log"
+        "net/http"
+        "os"
+        "os/signal"
+        "syscall"
+        "time"
+
+        "github.com/prometheus/client_golang/prometheus/promhttp"
+
+        "github.com/sattwyk/autodocs/apps/crawler/internal/config"
+        "github.com/sattwyk/autodocs/apps/crawler/internal/github"
+        "github.com/sattwyk/autodocs/apps/crawler/internal/metrics"
+        "github.com/sattwyk/autodocs/apps/crawler/internal/model"
+        "github.com/sattwyk/autodocs/apps/crawler/internal/worker"
+)
+
+// Server represents the HTTP server for the crawler service
+type Server struct {
+        config       *config.Config
+        metrics      *metrics.Metrics
+        githubClient *github.Client
+        workerPool   *worker.Pool
+        httpServer   *http.Server
+}
+
+// NewServer creates a new server instance
+func NewServer() (*Server, error) <span class="cov8" title="1">{
+        // Load configuration
+        cfg, err := config.Load()
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to load config: %w", err)
+        }</span>
+
+        // Initialize metrics
+        <span class="cov0" title="0">m := metrics.New()
+
+        // Initialize GitHub client
+        ghClient, err := github.NewClient(cfg, m)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to create GitHub client: %w", err)
+        }</span>
+
+        // Initialize worker pool
+        <span class="cov0" title="0">pool := worker.NewPool(cfg, m, ghClient)
+
+        server := &amp;Server{
+                config:       cfg,
+                metrics:      m,
+                githubClient: ghClient,
+                workerPool:   pool,
+        }
+
+        // Setup HTTP server
+        mux := http.NewServeMux()
+        server.setupRoutes(mux)
+
+        server.httpServer = &amp;http.Server{
+                Addr:         fmt.Sprintf("%s:%s", cfg.Host, cfg.Port),
+                Handler:      server.loggingMiddleware(server.metricsMiddleware(mux)),
+                ReadTimeout:  30 * time.Second,
+                WriteTimeout: 30 * time.Second,
+                IdleTimeout:  120 * time.Second,
+        }
+
+        return server, nil</span>
+}
+
+// setupRoutes configures all HTTP routes
+func (s *Server) setupRoutes(mux *http.ServeMux) <span class="cov8" title="1">{
+        mux.HandleFunc("/", s.handleRoot)
+        mux.HandleFunc("/health", s.handleHealth)
+        mux.HandleFunc("/invoke", s.handleInvoke)
+        mux.Handle(s.config.MetricsPath, promhttp.Handler())
+}</span>
+
+// Start starts the server
+func (s *Server) Start(ctx context.Context) error <span class="cov8" title="1">{
+        // Start worker pool
+        if err := s.workerPool.Start(ctx); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to start worker pool: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">log.Printf("Starting crawler service on %s", s.httpServer.Addr)
+
+        // Start HTTP server in goroutine
+        go func() </span><span class="cov8" title="1">{
+                if err := s.httpServer.ListenAndServe(); err != nil &amp;&amp; err != http.ErrServerClosed </span><span class="cov0" title="0">{
+                        log.Fatalf("HTTP server failed: %v", err)
+                }</span>
+        }()
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// Stop gracefully shuts down the server
+func (s *Server) Stop(ctx context.Context) error <span class="cov8" title="1">{
+        log.Println("Shutting down crawler service...")
+
+        // Stop worker pool
+        if err := s.workerPool.Stop(); err != nil </span><span class="cov0" title="0">{
+                log.Printf("Error stopping worker pool: %v", err)
+        }</span>
+
+        // Shutdown HTTP server
+        <span class="cov8" title="1">if err := s.httpServer.Shutdown(ctx); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("failed to shutdown HTTP server: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">log.Println("Crawler service stopped")
+        return nil</span>
+}
+
+// handleRoot handles the root endpoint
+func (s *Server) handleRoot(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        if r.Method != http.MethodGet </span><span class="cov8" title="1">{
+                http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+                return
+        }</span>
+
+        <span class="cov8" title="1">w.Header().Set("Content-Type", "application/json")
+        response := map[string]string{
+                "service": "crawler",
+                "status":  "running",
+                "version": "1.0.0",
+        }
+        if err := json.NewEncoder(w).Encode(response); err != nil </span><span class="cov0" title="0">{
+                log.Printf("Failed to encode response: %v", err)
+        }</span>
+}
+
+// handleHealth handles the health check endpoint
+func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        if r.Method != http.MethodGet </span><span class="cov8" title="1">{
+                http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+                return
+        }</span>
+
+        <span class="cov8" title="1">w.Header().Set("Content-Type", "application/json")
+
+        status := "healthy"
+        if !s.workerPool.IsRunning() </span><span class="cov8" title="1">{
+                status = "unhealthy"
+                w.WriteHeader(http.StatusServiceUnavailable)
+        }</span>
+
+        <span class="cov8" title="1">response := model.HealthResponse{
+                Status:    status,
+                Service:   "crawler",
+                Timestamp: time.Now(),
+                Version:   "1.0.0",
+        }
+
+        if err := json.NewEncoder(w).Encode(response); err != nil </span><span class="cov0" title="0">{
+                log.Printf("Failed to encode response: %v", err)
+        }</span>
+}
+
+// handleInvoke handles the main crawl endpoint
+func (s *Server) handleInvoke(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        if r.Method != http.MethodPost </span><span class="cov8" title="1">{
+                http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+                return
+        }</span>
+
+        <span class="cov8" title="1">w.Header().Set("Content-Type", "application/json")
+
+        // Parse request
+        var req model.CrawlRequest
+        if err := json.NewDecoder(r.Body).Decode(&amp;req); err != nil </span><span class="cov8" title="1">{
+                http.Error(w, fmt.Sprintf("Invalid request body: %v", err), http.StatusBadRequest)
+                return
+        }</span>
+
+        // Validate request
+        <span class="cov8" title="1">if req.RepoURL == "" </span><span class="cov8" title="1">{
+                http.Error(w, "repo_url is required", http.StatusBadRequest)
+                return
+        }</span>
+
+        // Set default ref
+        <span class="cov8" title="1">if req.Ref == "" </span><span class="cov8" title="1">{
+                req.Ref = "main"
+        }</span>
+
+        // Parse repository URL
+        <span class="cov8" title="1">owner, repo, err := github.ParseRepositoryURL(req.RepoURL)
+        if err != nil </span><span class="cov8" title="1">{
+                http.Error(w, fmt.Sprintf("Invalid repository URL: %v", err), http.StatusBadRequest)
+                return
+        }</span>
+
+        // Create context with timeout
+        <span class="cov8" title="1">ctx, cancel := context.WithTimeout(r.Context(), 10*time.Minute)
+        defer cancel()
+
+        log.Printf("Starting crawl request for %s/%s", owner, repo)
+
+        // Perform crawl
+        response, err := s.workerPool.CrawlRepository(ctx, owner, repo, req.Ref, req.PathFilter)
+        if err != nil </span><span class="cov8" title="1">{
+                log.Printf("Crawl failed for %s/%s: %v", owner, repo, err)
+
+                // Return structured error response
+                errorResponse := &amp;model.CrawlResponse{
+                        TotalFiles:     0,
+                        ProcessedFiles: 0,
+                        SkippedFiles:   0,
+                        Errors: []model.CrawlError{
+                                {
+                                        FilePath: "",
+                                        Error:    err.Error(),
+                                        Type:     "crawl_failed",
+                                },
+                        },
+                        RepoInfo: model.RepositoryInfo{
+                                Owner: owner,
+                                Name:  repo,
+                                Ref:   req.Ref,
+                        },
+                }
+
+                w.WriteHeader(http.StatusInternalServerError)
+                if err := json.NewEncoder(w).Encode(errorResponse); err != nil </span><span class="cov0" title="0">{
+                        log.Printf("Failed to encode error response: %v", err)
+                }</span>
+                <span class="cov8" title="1">return</span>
+        }
+
+        <span class="cov0" title="0">log.Printf("Crawl completed for %s/%s: %d files processed, %d errors",
+                owner, repo, response.ProcessedFiles, len(response.Errors))
+
+        // Return success response
+        if err := json.NewEncoder(w).Encode(response); err != nil </span><span class="cov0" title="0">{
+                log.Printf("Failed to encode response: %v", err)
+        }</span>
+}
+
+// loggingMiddleware logs HTTP requests
+func (s *Server) loggingMiddleware(next http.Handler) http.Handler <span class="cov8" title="1">{
+        return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) </span><span class="cov8" title="1">{
+                start := time.Now()
+
+                // Create a response writer wrapper to capture status code
+                wrapper := &amp;responseWrapper{ResponseWriter: w, statusCode: http.StatusOK}
+
+                // Call next handler
+                next.ServeHTTP(wrapper, r)
+
+                // Log request
+                duration := time.Since(start)
+                log.Printf("%s %s %d %v %s",
+                        r.Method, r.URL.Path, wrapper.statusCode, duration, r.RemoteAddr)
+        }</span>)
+}
+
+// metricsMiddleware records metrics for HTTP requests
+func (s *Server) metricsMiddleware(next http.Handler) http.Handler <span class="cov8" title="1">{
+        return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) </span><span class="cov8" title="1">{
+                start := time.Now()
+
+                // Create a response writer wrapper to capture status code
+                wrapper := &amp;responseWrapper{ResponseWriter: w, statusCode: http.StatusOK}
+
+                // Call next handler
+                next.ServeHTTP(wrapper, r)
+
+                // Record metrics
+                duration := time.Since(start).Seconds()
+                s.metrics.RecordHTTPRequest(r.Method, r.URL.Path, fmt.Sprintf("%d", wrapper.statusCode))
+                s.metrics.RecordHTTPDuration(r.Method, r.URL.Path, duration)
+        }</span>)
+}
+
+// responseWrapper wraps http.ResponseWriter to capture status code
+type responseWrapper struct {
+        http.ResponseWriter
+        statusCode int
+}
+
+func (rw *responseWrapper) WriteHeader(code int) <span class="cov8" title="1">{
+        rw.statusCode = code
+        rw.ResponseWriter.WriteHeader(code)
+}</span>
+
+// main is the entry point
+func main() <span class="cov0" title="0">{
+        // Create server
+        server, err := NewServer()
+        if err != nil </span><span class="cov0" title="0">{
+                log.Fatalf("Failed to create server: %v", err)
+        }</span>
+
+        // Start server
+        <span class="cov0" title="0">ctx := context.Background()
+        if err := server.Start(ctx); err != nil </span><span class="cov0" title="0">{
+                log.Fatalf("Failed to start server: %v", err)
+        }</span>
+
+        // Wait for interrupt signal
+        <span class="cov0" title="0">c := make(chan os.Signal, 1)
+        signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+
+        log.Println("Crawler service started successfully")
+        &lt;-c
+
+        // Graceful shutdown
+        shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+        defer cancel()
+
+        if err := server.Stop(shutdownCtx); err != nil </span><span class="cov0" title="0">{
+                log.Fatalf("Failed to shutdown server gracefully: %v", err)
+        }</span>
+}
+</pre>
+
+		<pre class="file" id="file1" style="display: none">package config
+
+import (
+        "fmt"
+        "os"
+        "strconv"
+        "strings"
+        "time"
+
+        "github.com/joho/godotenv"
+)
+
+// Config holds all configuration for the crawler service
+type Config struct {
+        // Server settings
+        Port string
+        Host string
+
+        // GitHub settings
+        GitHubBaseURL   string
+        GitHubToken     string // Personal Access Token
+        GitHubAppID     string // GitHub App ID
+        GitHubAppKey    string // GitHub App private key
+        GitHubInstallID string // GitHub App installation ID
+
+        // Worker pool settings
+        MaxWorkers int
+
+        // Rate limiting
+        APIRateLimitThreshold int
+
+        // Timeouts and retries
+        FetchTimeoutMS     int
+        RetryMaxAttempts   int
+        RetryBackoffBaseMS int
+
+        // Resource limits
+        MaxFileSize          int64 // in bytes
+        MaxConcurrentFetches int
+
+        // File filtering
+        AllowedExtensions     []string // allowed file extensions
+        EnableBinaryDetection bool     // enable binary file detection
+
+        // Observability
+        LogLevel    string
+        MetricsPath string
+
+        // Development
+        Environment string
+}
+
+// Load creates a new Config by reading from environment variables
+func Load() (*Config, error) <span class="cov8" title="1">{
+        // Load .env file if it exists (ignore errors if file doesn't exist)
+        _ = godotenv.Load()
+
+        cfg := &amp;Config{
+                // Default values
+                Port:                  getEnvOrDefault("PORT", "8080"),
+                Host:                  getEnvOrDefault("HOST", "0.0.0.0"),
+                GitHubBaseURL:         getEnvOrDefault("GITHUB_BASE_URL", "https://api.github.com"),
+                MaxWorkers:            getEnvAsIntOrDefault("MAX_WORKERS", 50),
+                APIRateLimitThreshold: getEnvAsIntOrDefault("API_RATE_LIMIT_THRESHOLD", 100),
+                FetchTimeoutMS:        getEnvAsIntOrDefault("FETCH_TIMEOUT_MS", 30000),
+                RetryMaxAttempts:      getEnvAsIntOrDefault("RETRY_MAX_ATTEMPTS", 3),
+                RetryBackoffBaseMS:    getEnvAsIntOrDefault("RETRY_BACKOFF_MS_BASE", 1000),
+                MaxFileSize:           getEnvAsInt64OrDefault("MAX_FILE_SIZE", 10*1024*1024), // 10MB
+                MaxConcurrentFetches:  getEnvAsIntOrDefault("MAX_CONCURRENT_FETCHES", 100),
+                LogLevel:              getEnvOrDefault("LOG_LEVEL", "info"),
+                MetricsPath:           getEnvOrDefault("METRICS_PATH", "/metrics"),
+                Environment:           getEnvOrDefault("ENVIRONMENT", "development"),
+                EnableBinaryDetection: getEnvAsBoolOrDefault("ENABLE_BINARY_DETECTION", true),
+        }
+
+        // Load allowed extensions
+        allowedExtensionsStr := getEnvOrDefault("ALLOWED_EXTENSIONS",
+                ".go,.js,.ts,.jsx,.tsx,.py,.java,.cpp,.c,.h,.hpp,.cs,.rb,.php,.rs,.swift,.kt,.scala,.sh,.bash,.zsh,.fish,.ps1,.bat,.cmd,.yaml,.yml,.json,.xml,.toml,.ini,.cfg,.conf,.md,.rst,.txt,.sql,.r,.m,.pl,.lua,.vim,.el,.clj,.hs,.fs,.ml,.pas,.ada,.cob,.f90,.pro,.asm,.s,.lisp,.scm,.tcl,.awk,.sed,.dockerfile,.makefile,.cmake,.gradle,.maven,.sbt,.cabal,.stack,.cargo,.gemfile,.requirements,.setup,.pipfile,.poetry,.pom,.build,.project,.solution")
+
+        if allowedExtensionsStr != "" </span><span class="cov8" title="1">{
+                extensions := strings.Split(allowedExtensionsStr, ",")
+                for i, ext := range extensions </span><span class="cov8" title="1">{
+                        extensions[i] = strings.TrimSpace(strings.ToLower(ext))
+                        // Ensure extensions start with dot
+                        if !strings.HasPrefix(extensions[i], ".") </span><span class="cov0" title="0">{
+                                extensions[i] = "." + extensions[i]
+                        }</span>
+                }
+                <span class="cov8" title="1">cfg.AllowedExtensions = extensions</span>
+        }
+
+        // Required environment variables
+        <span class="cov8" title="1">cfg.GitHubToken = os.Getenv("GITHUB_TOKEN")
+        cfg.GitHubAppID = os.Getenv("GITHUB_APP_ID")
+        cfg.GitHubAppKey = os.Getenv("GITHUB_APP_KEY")
+        cfg.GitHubInstallID = os.Getenv("GITHUB_INSTALL_ID")
+
+        // Validate configuration
+        if err := cfg.Validate(); err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("config validation failed: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">return cfg, nil</span>
+}
+
+// Validate checks if the configuration is valid
+func (c *Config) Validate() error <span class="cov8" title="1">{
+        // Check authentication - either PAT or GitHub App must be configured
+        if c.GitHubToken == "" &amp;&amp; (c.GitHubAppID == "" || c.GitHubAppKey == "" || c.GitHubInstallID == "") </span><span class="cov8" title="1">{
+                return fmt.Errorf("either GITHUB_TOKEN or GitHub App credentials (GITHUB_APP_ID, GITHUB_APP_KEY, GITHUB_INSTALL_ID) must be provided")
+        }</span>
+
+        // Validate worker pool settings
+        <span class="cov8" title="1">if c.MaxWorkers &lt;= 0 </span><span class="cov8" title="1">{
+                return fmt.Errorf("MAX_WORKERS must be greater than 0")
+        }</span>
+
+        <span class="cov8" title="1">if c.MaxWorkers &gt; 1000 </span><span class="cov0" title="0">{
+                return fmt.Errorf("MAX_WORKERS should not exceed 1000 for resource efficiency")
+        }</span>
+
+        // Validate timeouts
+        <span class="cov8" title="1">if c.FetchTimeoutMS &lt;= 0 </span><span class="cov0" title="0">{
+                return fmt.Errorf("FETCH_TIMEOUT_MS must be greater than 0")
+        }</span>
+
+        // Validate retry settings
+        <span class="cov8" title="1">if c.RetryMaxAttempts &lt; 0 </span><span class="cov0" title="0">{
+                return fmt.Errorf("RETRY_MAX_ATTEMPTS must be non-negative")
+        }</span>
+
+        <span class="cov8" title="1">if c.RetryBackoffBaseMS &lt;= 0 </span><span class="cov0" title="0">{
+                return fmt.Errorf("RETRY_BACKOFF_MS_BASE must be greater than 0")
+        }</span>
+
+        // Validate file size limits
+        <span class="cov8" title="1">if c.MaxFileSize &lt;= 0 </span><span class="cov0" title="0">{
+                return fmt.Errorf("MAX_FILE_SIZE must be greater than 0")
+        }</span>
+
+        // Validate concurrent fetches
+        <span class="cov8" title="1">if c.MaxConcurrentFetches &lt;= 0 </span><span class="cov0" title="0">{
+                return fmt.Errorf("MAX_CONCURRENT_FETCHES must be greater than 0")
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// GetFetchTimeout returns the fetch timeout as a duration
+func (c *Config) GetFetchTimeout() time.Duration <span class="cov8" title="1">{
+        return time.Duration(c.FetchTimeoutMS) * time.Millisecond
+}</span>
+
+// GetRetryBackoffBase returns the retry backoff base as a duration
+func (c *Config) GetRetryBackoffBase() time.Duration <span class="cov8" title="1">{
+        return time.Duration(c.RetryBackoffBaseMS) * time.Millisecond
+}</span>
+
+// IsProduction returns true if running in production environment
+func (c *Config) IsProduction() bool <span class="cov8" title="1">{
+        return c.Environment == "production"
+}</span>
+
+// HasGitHubApp returns true if GitHub App credentials are configured
+func (c *Config) HasGitHubApp() bool <span class="cov8" title="1">{
+        return c.GitHubAppID != "" &amp;&amp; c.GitHubAppKey != "" &amp;&amp; c.GitHubInstallID != ""
+}</span>
+
+// Helper functions
+
+func getEnvOrDefault(key, defaultValue string) string <span class="cov8" title="1">{
+        if value := os.Getenv(key); value != "" </span><span class="cov8" title="1">{
+                return value
+        }</span>
+        <span class="cov8" title="1">return defaultValue</span>
+}
+
+func getEnvAsIntOrDefault(key string, defaultValue int) int <span class="cov8" title="1">{
+        if value := os.Getenv(key); value != "" </span><span class="cov8" title="1">{
+                if intValue, err := strconv.Atoi(value); err == nil </span><span class="cov8" title="1">{
+                        return intValue
+                }</span>
+        }
+        <span class="cov8" title="1">return defaultValue</span>
+}
+
+func getEnvAsInt64OrDefault(key string, defaultValue int64) int64 <span class="cov8" title="1">{
+        if value := os.Getenv(key); value != "" </span><span class="cov0" title="0">{
+                if intValue, err := strconv.ParseInt(value, 10, 64); err == nil </span><span class="cov0" title="0">{
+                        return intValue
+                }</span>
+        }
+        <span class="cov8" title="1">return defaultValue</span>
+}
+
+func getEnvAsBoolOrDefault(key string, defaultValue bool) bool <span class="cov8" title="1">{
+        if value := os.Getenv(key); value != "" </span><span class="cov0" title="0">{
+                if boolValue, err := strconv.ParseBool(value); err == nil </span><span class="cov0" title="0">{
+                        return boolValue
+                }</span>
+        }
+        <span class="cov8" title="1">return defaultValue</span>
+}
+</pre>
+
+		<pre class="file" id="file2" style="display: none">package github
+
+import (
+        "context"
+        "encoding/base64"
+        "encoding/json"
+        "fmt"
+        "io"
+        "net/http"
+        "net/url"
+        "strconv"
+        "strings"
+        "time"
+
+        "github.com/golang-jwt/jwt/v5"
+        "golang.org/x/time/rate"
+
+        "github.com/sattwyk/autodocs/apps/crawler/internal/config"
+        "github.com/sattwyk/autodocs/apps/crawler/internal/metrics"
+        "github.com/sattwyk/autodocs/apps/crawler/internal/model"
+)
+
+// Client represents a GitHub API client
+type Client struct {
+        baseURL     string
+        httpClient  *http.Client
+        rateLimiter *rate.Limiter
+        metrics     *metrics.Metrics
+        config      *config.Config
+        token       string
+}
+
+// NewClient creates a new GitHub API client
+func NewClient(cfg *config.Config, m *metrics.Metrics) (*Client, error) <span class="cov8" title="1">{
+        client := &amp;Client{
+                baseURL:     cfg.GitHubBaseURL,
+                httpClient:  &amp;http.Client{Timeout: cfg.GetFetchTimeout()},
+                rateLimiter: rate.NewLimiter(rate.Limit(cfg.APIRateLimitThreshold), cfg.APIRateLimitThreshold),
+                metrics:     m,
+                config:      cfg,
+        }
+
+        // Set up authentication
+        if err := client.setupAuth(); err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("failed to setup authentication: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">return client, nil</span>
+}
+
+// setupAuth configures authentication for the GitHub client
+func (c *Client) setupAuth() error <span class="cov8" title="1">{
+        if c.config.GitHubToken != "" </span><span class="cov8" title="1">{
+                // Use Personal Access Token
+                c.token = c.config.GitHubToken
+                return nil
+        }</span>
+
+        <span class="cov8" title="1">if c.config.HasGitHubApp() </span><span class="cov8" title="1">{
+                // Use GitHub App authentication
+                token, err := c.generateInstallationToken()
+                if err != nil </span><span class="cov8" title="1">{
+                        return fmt.Errorf("failed to generate installation token: %w", err)
+                }</span>
+                <span class="cov0" title="0">c.token = token
+                return nil</span>
+        }
+
+        <span class="cov8" title="1">return fmt.Errorf("no authentication method configured")</span>
+}
+
+// generateInstallationToken generates a GitHub App installation token
+func (c *Client) generateInstallationToken() (string, error) <span class="cov8" title="1">{
+        // Generate JWT for GitHub App
+        jwtToken, err := c.generateAppJWT()
+        if err != nil </span><span class="cov8" title="1">{
+                return "", fmt.Errorf("failed to generate app JWT: %w", err)
+        }</span>
+
+        // Get installation token
+        <span class="cov0" title="0">url := fmt.Sprintf("%s/app/installations/%s/access_tokens", c.baseURL, c.config.GitHubInstallID)
+        req, err := http.NewRequest("POST", url, nil)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to create request: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">req.Header.Set("Authorization", "Bearer "+jwtToken)
+        req.Header.Set("Accept", "application/vnd.github.v3+json")
+
+        resp, err := c.httpClient.Do(req)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to make request: %w", err)
+        }</span>
+        <span class="cov0" title="0">defer resp.Body.Close()
+
+        if resp.StatusCode != http.StatusCreated </span><span class="cov0" title="0">{
+                body, _ := io.ReadAll(resp.Body)
+                return "", fmt.Errorf("failed to get installation token: %s", string(body))
+        }</span>
+
+        <span class="cov0" title="0">var tokenResp struct {
+                Token string `json:"token"`
+        }
+        if err := json.NewDecoder(resp.Body).Decode(&amp;tokenResp); err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to decode token response: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">return tokenResp.Token, nil</span>
+}
+
+// generateAppJWT generates a JWT for GitHub App authentication
+func (c *Client) generateAppJWT() (string, error) <span class="cov8" title="1">{
+        now := time.Now()
+        claims := jwt.MapClaims{
+                "iat": now.Unix(),
+                "exp": now.Add(10 * time.Minute).Unix(),
+                "iss": c.config.GitHubAppID,
+        }
+
+        token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+
+        // Parse the private key
+        key, err := jwt.ParseRSAPrivateKeyFromPEM([]byte(c.config.GitHubAppKey))
+        if err != nil </span><span class="cov8" title="1">{
+                return "", fmt.Errorf("failed to parse private key: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">return token.SignedString(key)</span>
+}
+
+// GetRepositoryTree fetches the Git tree for a repository
+func (c *Client) GetRepositoryTree(ctx context.Context, owner, repo, ref string) (*model.GitHubTreeResponse, error) <span class="cov8" title="1">{
+        // Wait for rate limit
+        if err := c.rateLimiter.Wait(ctx); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("rate limit wait failed: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">url := fmt.Sprintf("%s/repos/%s/%s/git/trees/%s?recursive=1", c.baseURL, owner, repo, ref)
+
+        var treeResp *model.GitHubTreeResponse
+        err := c.makeRequestWithRetry(ctx, "GET", url, nil, func(resp *http.Response) error </span><span class="cov8" title="1">{
+                c.metrics.RecordGitHubAPICall("get_tree", strconv.Itoa(resp.StatusCode))
+
+                if resp.StatusCode != http.StatusOK </span><span class="cov0" title="0">{
+                        body, _ := io.ReadAll(resp.Body)
+                        return fmt.Errorf("API error %d: %s", resp.StatusCode, string(body))
+                }</span>
+
+                <span class="cov8" title="1">return json.NewDecoder(resp.Body).Decode(&amp;treeResp)</span>
+        })
+
+        <span class="cov8" title="1">if err != nil </span><span class="cov0" title="0">{
+                c.metrics.RecordError("api_error", owner, repo)
+                return nil, fmt.Errorf("failed to get repository tree: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">return treeResp, nil</span>
+}
+
+// GetFileContent fetches the content of a specific file
+func (c *Client) GetFileContent(ctx context.Context, owner, repo, path, ref string) ([]byte, error) <span class="cov8" title="1">{
+        // Wait for rate limit
+        if err := c.rateLimiter.Wait(ctx); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("rate limit wait failed: %w", err)
+        }</span>
+
+        // Try raw content first (more efficient)
+        <span class="cov8" title="1">rawURL := fmt.Sprintf("https://raw.githubusercontent.com/%s/%s/%s/%s", owner, repo, ref, path)
+
+        var content []byte
+        err := c.makeRequestWithRetry(ctx, "GET", rawURL, nil, func(resp *http.Response) error </span><span class="cov8" title="1">{
+                c.metrics.RecordGitHubAPICall("get_raw_content", strconv.Itoa(resp.StatusCode))
+
+                if resp.StatusCode == http.StatusOK </span><span class="cov0" title="0">{
+                        var err error
+                        content, err = io.ReadAll(resp.Body)
+                        return err
+                }</span>
+
+                // If raw content fails, try API endpoint
+                <span class="cov8" title="1">return c.getFileContentViaAPI(ctx, owner, repo, path, ref, &amp;content)</span>
+        })
+
+        <span class="cov8" title="1">if err != nil </span><span class="cov0" title="0">{
+                c.metrics.RecordError("api_error", owner, repo)
+                return nil, fmt.Errorf("failed to get file content for %s: %w", path, err)
+        }</span>
+
+        <span class="cov8" title="1">return content, nil</span>
+}
+
+// getFileContentViaAPI fetches file content via the GitHub API
+func (c *Client) getFileContentViaAPI(ctx context.Context, owner, repo, path, ref string, content *[]byte) error <span class="cov8" title="1">{
+        url := fmt.Sprintf("%s/repos/%s/%s/contents/%s?ref=%s", c.baseURL, owner, repo, path, ref)
+
+        return c.makeRequestWithRetry(ctx, "GET", url, nil, func(resp *http.Response) error </span><span class="cov8" title="1">{
+                c.metrics.RecordGitHubAPICall("get_content", strconv.Itoa(resp.StatusCode))
+
+                if resp.StatusCode != http.StatusOK </span><span class="cov0" title="0">{
+                        body, _ := io.ReadAll(resp.Body)
+                        return fmt.Errorf("API error %d: %s", resp.StatusCode, string(body))
+                }</span>
+
+                <span class="cov8" title="1">var contentResp model.GitHubContentResponse
+                if err := json.NewDecoder(resp.Body).Decode(&amp;contentResp); err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to decode content response: %w", err)
+                }</span>
+
+                <span class="cov8" title="1">if contentResp.Encoding == "base64" </span><span class="cov8" title="1">{
+                        decoded, err := base64.StdEncoding.DecodeString(contentResp.Content)
+                        if err != nil </span><span class="cov0" title="0">{
+                                return fmt.Errorf("failed to decode base64 content: %w", err)
+                        }</span>
+                        <span class="cov8" title="1">*content = decoded</span>
+                } else<span class="cov0" title="0"> {
+                        *content = []byte(contentResp.Content)
+                }</span>
+
+                <span class="cov8" title="1">return nil</span>
+        })
+}
+
+// makeRequestWithRetry makes an HTTP request with retry logic
+func (c *Client) makeRequestWithRetry(ctx context.Context, method, url string, body io.Reader, handler func(*http.Response) error) error <span class="cov8" title="1">{
+        var lastErr error
+        backoff := c.config.GetRetryBackoffBase()
+
+        for attempt := 0; attempt &lt;= c.config.RetryMaxAttempts; attempt++ </span><span class="cov8" title="1">{
+                if attempt &gt; 0 </span><span class="cov0" title="0">{
+                        select </span>{
+                        case &lt;-ctx.Done():<span class="cov0" title="0">
+                                return ctx.Err()</span>
+                        case &lt;-time.After(backoff):<span class="cov0" title="0">
+                                backoff *= 2</span> // Exponential backoff
+                        }
+                }
+
+                <span class="cov8" title="1">req, err := http.NewRequestWithContext(ctx, method, url, body)
+                if err != nil </span><span class="cov0" title="0">{
+                        return fmt.Errorf("failed to create request: %w", err)
+                }</span>
+
+                <span class="cov8" title="1">c.setHeaders(req)
+
+                resp, err := c.httpClient.Do(req)
+                if err != nil </span><span class="cov0" title="0">{
+                        lastErr = err
+                        continue</span>
+                }
+
+                // Update rate limit metrics
+                <span class="cov8" title="1">c.updateRateLimitMetrics(resp)
+
+                err = handler(resp)
+                resp.Body.Close()
+
+                if err == nil </span><span class="cov8" title="1">{
+                        return nil
+                }</span>
+
+                // Check if we should retry
+                <span class="cov0" title="0">if resp.StatusCode &gt;= 500 || resp.StatusCode == 429 </span><span class="cov0" title="0">{
+                        lastErr = err
+                        continue</span>
+                }
+
+                // Don't retry for client errors
+                <span class="cov0" title="0">return err</span>
+        }
+
+        <span class="cov0" title="0">return fmt.Errorf("max retries exceeded, last error: %w", lastErr)</span>
+}
+
+// setHeaders sets the required headers for GitHub API requests
+func (c *Client) setHeaders(req *http.Request) <span class="cov8" title="1">{
+        req.Header.Set("Authorization", "token "+c.token)
+        req.Header.Set("Accept", "application/vnd.github.v3+json")
+        req.Header.Set("User-Agent", "autodocs-crawler/1.0")
+}</span>
+
+// updateRateLimitMetrics updates rate limit metrics from response headers
+func (c *Client) updateRateLimitMetrics(resp *http.Response) <span class="cov8" title="1">{
+        if limitStr := resp.Header.Get("X-RateLimit-Limit"); limitStr != "" </span><span class="cov0" title="0">{
+                if limit, err := strconv.Atoi(limitStr); err == nil </span><span class="cov0" title="0">{
+                        if remainingStr := resp.Header.Get("X-RateLimit-Remaining"); remainingStr != "" </span><span class="cov0" title="0">{
+                                if remaining, err := strconv.Atoi(remainingStr); err == nil </span><span class="cov0" title="0">{
+                                        c.metrics.UpdateGitHubRateLimit(limit-remaining, limit)
+                                }</span>
+                        }
+                }
+        }
+}
+
+// ParseRepositoryURL parses a GitHub repository URL and extracts owner and repo name
+func ParseRepositoryURL(repoURL string) (owner, repo string, err error) <span class="cov8" title="1">{
+        parsed, err := url.Parse(repoURL)
+        if err != nil </span><span class="cov8" title="1">{
+                return "", "", fmt.Errorf("invalid repository URL: %w", err)
+        }</span>
+
+        // Handle different URL formats
+        <span class="cov8" title="1">path := strings.Trim(parsed.Path, "/")
+        path = strings.TrimSuffix(path, ".git")
+
+        parts := strings.Split(path, "/")
+        if len(parts) != 2 </span><span class="cov8" title="1">{
+                return "", "", fmt.Errorf("invalid repository URL format, expected owner/repo")
+        }</span>
+
+        <span class="cov8" title="1">return parts[0], parts[1], nil</span>
+}
+</pre>
+
+		<pre class="file" id="file3" style="display: none">package metrics
+
+import (
+        "sync"
+
+        "github.com/prometheus/client_golang/prometheus"
+        "github.com/prometheus/client_golang/prometheus/promauto"
+)
+
+// Metrics holds all the Prometheus metrics for the crawler service
+type Metrics struct {
+        // Request metrics
+        HTTPRequestsTotal   *prometheus.CounterVec
+        HTTPRequestDuration *prometheus.HistogramVec
+
+        // Crawler metrics
+        FilesRequestedTotal *prometheus.CounterVec
+        FilesProcessedTotal *prometheus.CounterVec
+        ErrorsTotal         *prometheus.CounterVec
+        ConcurrencyInUse    prometheus.Gauge
+
+        // GitHub API metrics
+        GitHubAPICallsTotal  *prometheus.CounterVec
+        GitHubRateLimitUsed  prometheus.Gauge
+        GitHubRateLimitLimit prometheus.Gauge
+
+        // Worker pool metrics
+        WorkerPoolSize prometheus.Gauge
+        QueueDepth     prometheus.Gauge
+        TaskDuration   *prometheus.HistogramVec
+
+        // Resource metrics
+        FileSizeBytes *prometheus.HistogramVec
+
+        // registry for testing
+        registry prometheus.Registerer
+}
+
+var (
+        globalMetrics *Metrics
+        metricsOnce   sync.Once
+)
+
+// New creates and registers all Prometheus metrics
+func New() *Metrics <span class="cov0" title="0">{
+        metricsOnce.Do(func() </span><span class="cov0" title="0">{
+                globalMetrics = newMetrics(prometheus.DefaultRegisterer)
+        }</span>)
+        <span class="cov0" title="0">return globalMetrics</span>
+}
+
+// NewForTesting creates metrics with a custom registry for testing
+func NewForTesting() *Metrics <span class="cov8" title="1">{
+        return newMetrics(prometheus.NewRegistry())
+}</span>
+
+// newMetrics creates metrics with the specified registerer
+func newMetrics(registerer prometheus.Registerer) *Metrics <span class="cov8" title="1">{
+        factory := promauto.With(registerer)
+
+        return &amp;Metrics{
+                HTTPRequestsTotal: factory.NewCounterVec(
+                        prometheus.CounterOpts{
+                                Name: "crawler_http_requests_total",
+                                Help: "Total number of HTTP requests received",
+                        },
+                        []string{"method", "path", "status"},
+                ),
+
+                HTTPRequestDuration: factory.NewHistogramVec(
+                        prometheus.HistogramOpts{
+                                Name:    "crawler_http_request_duration_seconds",
+                                Help:    "Duration of HTTP requests in seconds",
+                                Buckets: prometheus.DefBuckets,
+                        },
+                        []string{"method", "path"},
+                ),
+
+                FilesRequestedTotal: factory.NewCounterVec(
+                        prometheus.CounterOpts{
+                                Name: "crawler_files_requested_total",
+                                Help: "Total number of files requested for crawling",
+                        },
+                        []string{"repo_owner", "repo_name"},
+                ),
+
+                FilesProcessedTotal: factory.NewCounterVec(
+                        prometheus.CounterOpts{
+                                Name: "crawler_files_processed_total",
+                                Help: "Total number of files successfully processed",
+                        },
+                        []string{"repo_owner", "repo_name", "status"},
+                ),
+
+                ErrorsTotal: factory.NewCounterVec(
+                        prometheus.CounterOpts{
+                                Name: "crawler_errors_total",
+                                Help: "Total number of errors encountered",
+                        },
+                        []string{"type", "repo_owner", "repo_name"},
+                ),
+
+                ConcurrencyInUse: factory.NewGauge(
+                        prometheus.GaugeOpts{
+                                Name: "crawler_concurrency_in_use",
+                                Help: "Number of concurrent operations currently in progress",
+                        },
+                ),
+
+                GitHubAPICallsTotal: factory.NewCounterVec(
+                        prometheus.CounterOpts{
+                                Name: "crawler_github_api_calls_total",
+                                Help: "Total number of GitHub API calls made",
+                        },
+                        []string{"endpoint", "status"},
+                ),
+
+                GitHubRateLimitUsed: factory.NewGauge(
+                        prometheus.GaugeOpts{
+                                Name: "crawler_github_rate_limit_used",
+                                Help: "Number of GitHub API rate limit requests used",
+                        },
+                ),
+
+                GitHubRateLimitLimit: factory.NewGauge(
+                        prometheus.GaugeOpts{
+                                Name: "crawler_github_rate_limit_limit",
+                                Help: "GitHub API rate limit maximum",
+                        },
+                ),
+
+                WorkerPoolSize: factory.NewGauge(
+                        prometheus.GaugeOpts{
+                                Name: "crawler_worker_pool_size",
+                                Help: "Current size of the worker pool",
+                        },
+                ),
+
+                QueueDepth: factory.NewGauge(
+                        prometheus.GaugeOpts{
+                                Name: "crawler_queue_depth",
+                                Help: "Current depth of the task queue",
+                        },
+                ),
+
+                TaskDuration: factory.NewHistogramVec(
+                        prometheus.HistogramOpts{
+                                Name:    "crawler_task_duration_seconds",
+                                Help:    "Duration of individual tasks in seconds",
+                                Buckets: []float64{0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 2.5, 5, 10},
+                        },
+                        []string{"task_type"},
+                ),
+
+                FileSizeBytes: factory.NewHistogramVec(
+                        prometheus.HistogramOpts{
+                                Name:    "crawler_file_size_bytes",
+                                Help:    "Size of processed files in bytes",
+                                Buckets: []float64{1024, 10240, 102400, 1048576, 10485760, 104857600}, // 1KB to 100MB
+                        },
+                        []string{"repo_owner", "repo_name"},
+                ),
+
+                registry: registerer,
+        }
+}</span>
+
+// RecordHTTPRequest records an HTTP request
+func (m *Metrics) RecordHTTPRequest(method, path, status string) <span class="cov8" title="1">{
+        m.HTTPRequestsTotal.WithLabelValues(method, path, status).Inc()
+}</span>
+
+// RecordHTTPDuration records the duration of an HTTP request
+func (m *Metrics) RecordHTTPDuration(method, path string, duration float64) <span class="cov8" title="1">{
+        m.HTTPRequestDuration.WithLabelValues(method, path).Observe(duration)
+}</span>
+
+// RecordFileRequested records a file request
+func (m *Metrics) RecordFileRequested(repoOwner, repoName string) <span class="cov8" title="1">{
+        m.FilesRequestedTotal.WithLabelValues(repoOwner, repoName).Inc()
+}</span>
+
+// RecordFileProcessed records a processed file
+func (m *Metrics) RecordFileProcessed(repoOwner, repoName, status string) <span class="cov8" title="1">{
+        m.FilesProcessedTotal.WithLabelValues(repoOwner, repoName, status).Inc()
+}</span>
+
+// RecordError records an error
+func (m *Metrics) RecordError(errorType, repoOwner, repoName string) <span class="cov8" title="1">{
+        m.ErrorsTotal.WithLabelValues(errorType, repoOwner, repoName).Inc()
+}</span>
+
+// SetConcurrency sets the current concurrency level
+func (m *Metrics) SetConcurrency(count float64) <span class="cov8" title="1">{
+        m.ConcurrencyInUse.Set(count)
+}</span>
+
+// RecordGitHubAPICall records a GitHub API call
+func (m *Metrics) RecordGitHubAPICall(endpoint, status string) <span class="cov8" title="1">{
+        m.GitHubAPICallsTotal.WithLabelValues(endpoint, status).Inc()
+}</span>
+
+// UpdateGitHubRateLimit updates the GitHub rate limit metrics
+func (m *Metrics) UpdateGitHubRateLimit(used, limit int) <span class="cov8" title="1">{
+        m.GitHubRateLimitUsed.Set(float64(limit - used))
+        m.GitHubRateLimitLimit.Set(float64(limit))
+}</span>
+
+// SetWorkerPoolSize sets the worker pool size
+func (m *Metrics) SetWorkerPoolSize(size float64) <span class="cov8" title="1">{
+        m.WorkerPoolSize.Set(size)
+}</span>
+
+// SetQueueDepth sets the queue depth
+func (m *Metrics) SetQueueDepth(depth float64) <span class="cov8" title="1">{
+        m.QueueDepth.Set(depth)
+}</span>
+
+// RecordTaskDuration records the duration of a task
+func (m *Metrics) RecordTaskDuration(taskType string, duration float64) <span class="cov8" title="1">{
+        m.TaskDuration.WithLabelValues(taskType).Observe(duration)
+}</span>
+
+// RecordFileSize records the size of a processed file
+func (m *Metrics) RecordFileSize(repoOwner, repoName string, sizeBytes float64) <span class="cov8" title="1">{
+        m.FileSizeBytes.WithLabelValues(repoOwner, repoName).Observe(sizeBytes)
+}</span>
+</pre>
+
+		<pre class="file" id="file4" style="display: none">package worker
+
+import (
+        "context"
+        "fmt"
+        "log"
+        "path/filepath"
+        "strings"
+        "sync"
+        "time"
+        "unicode/utf8"
+
+        "github.com/sattwyk/autodocs/apps/crawler/internal/config"
+        "github.com/sattwyk/autodocs/apps/crawler/internal/github"
+        "github.com/sattwyk/autodocs/apps/crawler/internal/metrics"
+        "github.com/sattwyk/autodocs/apps/crawler/internal/model"
+)
+
+// Pool represents a worker pool for processing crawl tasks
+type Pool struct {
+        config       *config.Config
+        metrics      *metrics.Metrics
+        githubClient *github.Client
+
+        // Channels
+        taskChan   chan model.WorkerTask
+        resultChan chan model.FileResult
+
+        // Control
+        ctx    context.Context
+        cancel context.CancelFunc
+        wg     sync.WaitGroup
+
+        // State
+        activeWorkers int
+        mu            sync.RWMutex
+}
+
+// NewPool creates a new worker pool
+func NewPool(cfg *config.Config, m *metrics.Metrics, ghClient *github.Client) *Pool <span class="cov8" title="1">{
+        ctx, cancel := context.WithCancel(context.Background())
+
+        pool := &amp;Pool{
+                config:       cfg,
+                metrics:      m,
+                githubClient: ghClient,
+                taskChan:     make(chan model.WorkerTask, cfg.MaxConcurrentFetches),
+                resultChan:   make(chan model.FileResult, cfg.MaxConcurrentFetches),
+                ctx:          ctx,
+                cancel:       cancel,
+        }
+
+        // Set initial metrics
+        m.SetWorkerPoolSize(float64(cfg.MaxWorkers))
+
+        return pool
+}</span>
+
+// Start starts the worker pool
+func (p *Pool) Start(ctx context.Context) error <span class="cov8" title="1">{
+        p.mu.Lock()
+        defer p.mu.Unlock()
+
+        if p.activeWorkers &gt; 0 </span><span class="cov8" title="1">{
+                return fmt.Errorf("worker pool is already running")
+        }</span>
+
+        // Start workers
+        <span class="cov8" title="1">for i := range p.config.MaxWorkers </span><span class="cov8" title="1">{
+                p.wg.Add(1)
+                go p.worker(i)
+                p.activeWorkers++
+        }</span>
+
+        <span class="cov8" title="1">log.Printf("Started %d workers", p.activeWorkers)
+        p.metrics.SetWorkerPoolSize(float64(p.activeWorkers))
+
+        return nil</span>
+}
+
+// Stop stops the worker pool gracefully
+func (p *Pool) Stop() error <span class="cov8" title="1">{
+        p.cancel()
+
+        // Close task channel
+        close(p.taskChan)
+
+        // Wait for all workers to finish
+        p.wg.Wait()
+
+        // Close result channel
+        close(p.resultChan)
+
+        p.mu.Lock()
+        p.activeWorkers = 0
+        p.mu.Unlock()
+
+        p.metrics.SetWorkerPoolSize(0)
+        log.Printf("Worker pool stopped")
+
+        return nil
+}</span>
+
+// SubmitTask submits a task to the worker pool
+func (p *Pool) SubmitTask(task model.WorkerTask) error <span class="cov8" title="1">{
+        select </span>{
+        case p.taskChan &lt;- task:<span class="cov8" title="1">
+                p.metrics.SetQueueDepth(float64(len(p.taskChan)))
+                return nil</span>
+        case &lt;-p.ctx.Done():<span class="cov0" title="0">
+                return p.ctx.Err()</span>
+        default:<span class="cov8" title="1">
+                return fmt.Errorf("task queue is full")</span>
+        }
+}
+
+// GetResultChannel returns the result channel
+func (p *Pool) GetResultChannel() &lt;-chan model.FileResult <span class="cov8" title="1">{
+        return p.resultChan
+}</span>
+
+// GetQueueDepth returns the current queue depth
+func (p *Pool) GetQueueDepth() int <span class="cov8" title="1">{
+        return len(p.taskChan)
+}</span>
+
+// IsRunning returns true if the worker pool is running
+func (p *Pool) IsRunning() bool <span class="cov8" title="1">{
+        p.mu.RLock()
+        defer p.mu.RUnlock()
+        return p.activeWorkers &gt; 0
+}</span>
+
+// worker is the main worker routine
+func (p *Pool) worker(workerID int) <span class="cov8" title="1">{
+        defer p.wg.Done()
+
+        log.Printf("Worker %d started", workerID)
+
+        for </span><span class="cov8" title="1">{
+                select </span>{
+                case task, ok := &lt;-p.taskChan:<span class="cov8" title="1">
+                        if !ok </span><span class="cov8" title="1">{
+                                log.Printf("Worker %d: task channel closed, shutting down", workerID)
+                                return
+                        }</span>
+
+                        // Update queue depth metric
+                        <span class="cov0" title="0">p.metrics.SetQueueDepth(float64(len(p.taskChan)))
+
+                        // Process the task
+                        result := p.processTask(workerID, task)
+
+                        // Send result
+                        select </span>{
+                        case p.resultChan &lt;- result:<span class="cov0" title="0"></span>
+                                // Result sent successfully
+                        case &lt;-p.ctx.Done():<span class="cov0" title="0">
+                                log.Printf("Worker %d: context cancelled while sending result", workerID)
+                                return</span>
+                        }
+
+                case &lt;-p.ctx.Done():<span class="cov8" title="1">
+                        log.Printf("Worker %d: context cancelled, shutting down", workerID)
+                        return</span>
+                }
+        }
+}
+
+// processTask processes a single task
+func (p *Pool) processTask(workerID int, task model.WorkerTask) model.FileResult <span class="cov8" title="1">{
+        startTime := time.Now()
+
+        result := model.FileResult{
+                Path:      task.Path,
+                SHA:       task.SHA,
+                Size:      task.Size,
+                FetchedAt: startTime,
+        }
+
+        // Record concurrency
+        p.metrics.SetConcurrency(float64(len(p.taskChan)))
+
+        // Use repository information from the task
+        owner, repo, ref := task.Owner, task.Repo, task.Ref
+
+        // Check file size limit
+        if int64(task.Size) &gt; p.config.MaxFileSize </span><span class="cov8" title="1">{
+                result.Error = fmt.Errorf("file size %d exceeds limit %d", task.Size, p.config.MaxFileSize)
+                p.metrics.RecordError("file_too_large", owner, repo)
+                return result
+        }</span>
+
+        // Create context with timeout
+        <span class="cov0" title="0">ctx, cancel := context.WithTimeout(p.ctx, p.config.GetFetchTimeout())
+        defer cancel()
+
+        // Fetch file content using the correct ref
+        content, err := p.githubClient.GetFileContent(ctx, owner, repo, task.Path, ref)
+        if err != nil </span><span class="cov0" title="0">{
+                result.Error = err
+                p.metrics.RecordError("fetch_failed", owner, repo)
+                p.metrics.RecordFileProcessed(owner, repo, "failed")
+                log.Printf("Worker %d: failed to fetch %s: %v", workerID, task.Path, err)
+                return result
+        }</span>
+
+        // Binary detection
+        <span class="cov0" title="0">if p.config.EnableBinaryDetection &amp;&amp; p.isBinaryContent(content) </span><span class="cov0" title="0">{
+                result.Error = fmt.Errorf("skipping binary file")
+                p.metrics.RecordError("binary_file_skipped", owner, repo)
+                p.metrics.RecordFileProcessed(owner, repo, "skipped_binary")
+                log.Printf("Worker %d: skipped binary file %s", workerID, task.Path)
+                return result
+        }</span>
+
+        // UTF-8 validation
+        <span class="cov0" title="0">if !utf8.Valid(content) </span><span class="cov0" title="0">{
+                result.Error = fmt.Errorf("file content is not valid UTF-8")
+                p.metrics.RecordError("invalid_utf8", owner, repo)
+                p.metrics.RecordFileProcessed(owner, repo, "skipped_invalid_encoding")
+                log.Printf("Worker %d: skipped non-UTF-8 file %s", workerID, task.Path)
+                return result
+        }</span>
+
+        <span class="cov0" title="0">result.Content = content
+        result.Size = len(content)
+        p.metrics.RecordFileProcessed(owner, repo, "success")
+        p.metrics.RecordFileSize(owner, repo, float64(len(content)))
+        log.Printf("Worker %d: successfully fetched %s (%d bytes)", workerID, task.Path, len(content))
+
+        // Record task duration
+        duration := time.Since(startTime).Seconds()
+        p.metrics.RecordTaskDuration("file_fetch", duration)
+
+        return result</span>
+}
+
+// CrawlRepository crawls an entire repository
+func (p *Pool) CrawlRepository(ctx context.Context, owner, repo, ref string, pathFilter []string) (*model.CrawlResponse, error) <span class="cov0" title="0">{
+        startTime := time.Now()
+
+        log.Printf("Starting crawl of %s/%s at ref %s", owner, repo, ref)
+
+        // Get repository tree
+        tree, err := p.githubClient.GetRepositoryTree(ctx, owner, repo, ref)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to get repository tree: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">log.Printf("Retrieved tree with %d entries", len(tree.Tree))
+
+        // Filter files
+        var filesToProcess []model.TreeEntry
+        for _, entry := range tree.Tree </span><span class="cov0" title="0">{
+                if entry.Type == "blob" &amp;&amp; p.shouldProcessFile(entry.Path, pathFilter) </span><span class="cov0" title="0">{
+                        filesToProcess = append(filesToProcess, entry)
+                }</span>
+        }
+
+        <span class="cov0" title="0">log.Printf("Processing %d files after filtering", len(filesToProcess))
+
+        // Submit tasks with repository context
+        for _, file := range filesToProcess </span><span class="cov0" title="0">{
+                task := model.WorkerTask{
+                        Path:  file.Path,
+                        SHA:   file.SHA,
+                        Size:  file.Size,
+                        Owner: owner, // Pass repository owner
+                        Repo:  repo,  // Pass repository name
+                        Ref:   ref,   // Pass the correct ref
+                }
+
+                if err := p.SubmitTask(task); err != nil </span><span class="cov0" title="0">{
+                        log.Printf("Failed to submit task for %s: %v", file.Path, err)
+                        continue</span>
+                }
+
+                <span class="cov0" title="0">p.metrics.RecordFileRequested(owner, repo)</span>
+        }
+
+        // Collect results
+        <span class="cov0" title="0">var (
+                processedFiles = 0
+                skippedFiles   = 0
+                errors         []model.CrawlError
+                mu             sync.Mutex
+                fileResults    []model.FileResult
+        )
+
+        // Create a done channel to signal completion
+        done := make(chan struct{})
+        go func() </span><span class="cov0" title="0">{
+                defer close(done)
+
+                for range filesToProcess </span><span class="cov0" title="0">{
+                        select </span>{
+                        case result := &lt;-p.resultChan:<span class="cov0" title="0">
+                                mu.Lock()
+                                if result.Error != nil </span><span class="cov0" title="0">{
+                                        skippedFiles++
+                                        errors = append(errors, model.CrawlError{
+                                                FilePath: result.Path,
+                                                Error:    result.Error.Error(),
+                                                Type:     "fetch_error",
+                                        })
+                                }</span> else<span class="cov0" title="0"> {
+                                        processedFiles++
+                                }</span>
+                                <span class="cov0" title="0">fileResults = append(fileResults, result)
+                                mu.Unlock()</span>
+
+                        case &lt;-ctx.Done():<span class="cov0" title="0">
+                                log.Printf("Context cancelled while waiting for results")
+                                return</span>
+                        }
+                }
+        }()
+
+        // Wait for completion or timeout
+        <span class="cov0" title="0">select </span>{
+        case &lt;-done:<span class="cov0" title="0">
+                log.Printf("Crawl completed: %d processed, %d skipped, %d errors",
+                        processedFiles, skippedFiles, len(errors))</span>
+        case &lt;-ctx.Done():<span class="cov0" title="0">
+                return nil, ctx.Err()</span>
+        }
+
+        // Build response
+        <span class="cov0" title="0">response := &amp;model.CrawlResponse{
+                TotalFiles:     len(filesToProcess),
+                ProcessedFiles: processedFiles,
+                SkippedFiles:   skippedFiles,
+                Errors:         errors,
+                RootTreeSHA:    tree.SHA,
+                Duration:       time.Since(startTime).String(),
+                RepoInfo: model.RepositoryInfo{
+                        Owner: owner,
+                        Name:  repo,
+                        Ref:   ref,
+                },
+                Files: fileResults,
+        }
+
+        return response, nil</span>
+}
+
+// shouldProcessFile determines if a file should be processed based on path filters and file extensions
+func (p *Pool) shouldProcessFile(path string, pathFilter []string) bool <span class="cov8" title="1">{
+        // Check path filters first (existing logic)
+        if len(pathFilter) &gt; 0 </span><span class="cov8" title="1">{
+                matchesFilter := false
+                for _, filter := range pathFilter </span><span class="cov8" title="1">{
+                        if len(path) &gt;= len(filter) &amp;&amp; path[:len(filter)] == filter </span><span class="cov8" title="1">{
+                                matchesFilter = true
+                                break</span>
+                        }
+                }
+                <span class="cov8" title="1">if !matchesFilter </span><span class="cov8" title="1">{
+                        return false
+                }</span>
+        }
+
+        // Check file extension
+        <span class="cov8" title="1">if len(p.config.AllowedExtensions) &gt; 0 </span><span class="cov8" title="1">{
+                return p.isAllowedFileType(path)
+        }</span>
+
+        <span class="cov0" title="0">return true</span>
+}
+
+// isAllowedFileType checks if the file extension is in the allowed list
+func (p *Pool) isAllowedFileType(path string) bool <span class="cov8" title="1">{
+        if len(p.config.AllowedExtensions) == 0 </span><span class="cov8" title="1">{
+                return true // No restrictions if no extensions configured
+        }</span>
+
+        <span class="cov8" title="1">ext := strings.ToLower(filepath.Ext(path))
+        filename := strings.ToLower(filepath.Base(path))
+
+        // Check extension
+        for _, allowedExt := range p.config.AllowedExtensions </span><span class="cov8" title="1">{
+                if ext == allowedExt </span><span class="cov8" title="1">{
+                        return true
+                }</span>
+        }
+
+        // Check special filenames (dockerfile, makefile, etc.)
+        <span class="cov8" title="1">specialFiles := []string{
+                "dockerfile", "makefile", "rakefile", "gemfile", "guardfile",
+                "capfile", "berksfile", "cheffile", "vagrantfile", "fastfile",
+                "appfile", "deliverfile", "matchfile", "gymfile", "scanfile",
+                "snapfile", "podfile", "cartfile", "brewfile", "requirements.txt",
+                "setup.py", "setup.cfg", "pyproject.toml", "pipfile", "poetry.lock",
+                "package.json", "package-lock.json", "yarn.lock", "pnpm-lock.yaml",
+                "composer.json", "composer.lock", "go.mod", "go.sum", "cargo.toml",
+                "cargo.lock", "build.gradle", "pom.xml", "build.sbt", "mix.exs",
+                "deps.edn", "project.clj", "stack.yaml", "cabal.project",
+        }
+
+        for _, special := range specialFiles </span><span class="cov8" title="1">{
+                if filename == special </span><span class="cov8" title="1">{
+                        return true
+                }</span>
+        }
+
+        <span class="cov8" title="1">return false</span>
+}
+
+// isBinaryContent detects if content is binary by checking for null bytes and non-printable characters
+func (p *Pool) isBinaryContent(content []byte) bool <span class="cov8" title="1">{
+        if len(content) == 0 </span><span class="cov8" title="1">{
+                return false
+        }</span>
+
+        // Check first 8KB for binary indicators
+        <span class="cov8" title="1">checkSize := 8192
+        if len(content) &lt; checkSize </span><span class="cov8" title="1">{
+                checkSize = len(content)
+        }</span>
+
+        <span class="cov8" title="1">sample := content[:checkSize]
+
+        // Check for null bytes (strong binary indicator)
+        for _, b := range sample </span><span class="cov8" title="1">{
+                if b == 0 </span><span class="cov8" title="1">{
+                        return true
+                }</span>
+        }
+
+        // Check ratio of non-printable characters
+        <span class="cov8" title="1">nonPrintable := 0
+        for _, b := range sample </span><span class="cov8" title="1">{
+                // Consider bytes outside ASCII printable range (32-126) and common whitespace (9, 10, 13)
+                if b &lt; 9 || (b &gt; 13 &amp;&amp; b &lt; 32) || b &gt; 126 </span><span class="cov8" title="1">{
+                        nonPrintable++
+                }</span>
+        }
+
+        // If more than 30% non-printable, consider it binary
+        <span class="cov8" title="1">return float64(nonPrintable)/float64(len(sample)) &gt; 0.30</span>
+}
+</pre>
+
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>
