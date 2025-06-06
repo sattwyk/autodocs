@@ -252,7 +252,7 @@ groups:
     for: 2m
     annotations:
       summary: "High error rate in crawler service"
-  
+
   - alert: CrawlerRateLimitApproached
     expr: crawler_github_rate_limit_used / crawler_github_rate_limit_limit > 0.8
     for: 1m
