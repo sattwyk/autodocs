@@ -6,8 +6,14 @@
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, flake-utils }:
-    flake-utils.lib.eachDefaultSystem (system:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      flake-utils,
+    }:
+    flake-utils.lib.eachDefaultSystem (
+      system:
       let
         pkgs = import nixpkgs {
           inherit system;
@@ -15,7 +21,7 @@
         };
         pythonVersion = pkgs.python311;
         nodeVersion = pkgs.nodejs_22;
-        goVersion = pkgs.go_1_23;
+        goVersion = pkgs.go_1_24;
 
       in
       {
@@ -80,7 +86,7 @@
               if [ ! -d "node_modules" ] || \
                  [ "pnpm-lock.yaml" -nt "node_modules/.pnpm/lock.yaml" ] 2>/dev/null; then
                 echo "Installing Node.js dependencies..."
-                pnpm install --frozen-lockfile || exit 1
+                pnpm install
               fi
 
               # Show environment info
