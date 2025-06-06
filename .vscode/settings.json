@@ -86,7 +86,7 @@
 	"python.terminal.activateEnvironment": true,
 	"python.analysis.autoSearchPaths": true,
 	"go.gopath": "${workspaceFolder}/.go",
-	"go.goroot": "",
+	"go.goroot": "${env:GOROOT}",
 	"go.toolsManagement.autoUpdate": true,
 	"go.useLanguageServer": true,
 	"go.lintOnSave": "package",
@@ -94,6 +94,23 @@
 	"go.lintTool": "golangci-lint",
 	"go.testFlags": ["-v"],
 	"go.buildOnSave": "package",
+	"go.alternateTools": {
+		"go": "${env:GOROOT}/bin/go"
+	},
+	"gopls": {
+		"ui.semanticTokens": true,
+		"ui.completion.usePlaceholders": true,
+		"ui.documentation.hoverKind": "FullDocumentation",
+		"ui.codelenses": {
+			"gc_details": false,
+			"regenerate_cgo": false,
+			"generate": true,
+			"test": true,
+			"tidy": true,
+			"upgrade_dependency": true,
+			"vendor": true
+		}
+	},
 	"editor.formatOnSave": true,
 	"editor.codeActionsOnSave": {
 		"source.fixAll": "explicit",
