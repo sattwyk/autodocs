@@ -1,0 +1,99 @@
+repos:
+  # General hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-merge-conflict
+      - id: check-added-large-files
+      - id: check-yaml
+      - id: check-json
+
+  # Nix formatting
+  - repo: local
+    hooks:
+      - id: nixfmt
+        name: Nix Format
+        entry: nixfmt
+        language: system
+        files: \.nix$
+
+  # JavaScript/TypeScript formatting and linting
+  - repo: local
+    hooks:
+      - id: biome-format
+        name: Biome Format
+        entry: pnpm exec biome format --write
+        language: system
+        files: \.(js|jsx|ts|tsx)$
+        pass_filenames: true
+
+      - id: typescript-check
+        name: TypeScript Type Check
+        entry: pnpm run type-check
+        language: system
+        files: \.(ts|tsx)$
+        pass_filenames: false
+
+  # Python hooks
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.12
+    hooks:
+      - id: ruff
+        name: Ruff Linter
+        args: [--fix]
+        files: ^apps/agent/.*\.py$
+      - id: ruff-format
+        name: Ruff Formatter
+        files: ^apps/agent/.*\.py$
+
+  # Go hooks
+  - repo: local
+    hooks:
+      - id: go-fmt
+        name: Go Format
+        entry: bash -c 'cd apps/crawler && go fmt ./...'
+        language: system
+        files: ^apps/crawler/.*\.go$
+        pass_filenames: false
+      - id: go-vet
+        name: Go Vet
+        entry: bash -c 'cd apps/crawler && go vet ./...'
+        language: system
+        files: ^apps/crawler/.*\.go$
+        pass_filenames: false
+      - id: go-mod-tidy
+        name: Go Mod Tidy
+        entry: bash -c 'cd apps/crawler && go mod tidy'
+        language: system
+        files: ^apps/crawler/go\.(mod|sum)$
+        pass_filenames: false
+
+  # Additional Go linting (optional - only runs if golangci-lint config exists)
+  - repo: local
+    hooks:
+      - id: golangci-lint
+        name: golangci-lint
+        entry: bash -c 'cd apps/crawler && golangci-lint run'
+        language: system
+        files: ^apps/crawler/.*\.go$
+        require_serial: true
+
+  # Pre-push hooks (run with: pre-commit run --hook-stage push)
+  - repo: local
+    hooks:
+      - id: pnpm-test
+        name: PNPM Tests
+        entry: pnpm run test
+        language: system
+        stages: [pre-push]
+        pass_filenames: false
+
+      - id: go-test
+        name: Go Tests
+        entry: bash -c 'cd apps/crawler && go test ./... -v'
+        language: system
+        files: ^apps/crawler/.*\.go$
+        stages: [pre-push]
+        pass_filenames: false

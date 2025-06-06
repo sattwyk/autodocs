@@ -41,6 +41,10 @@
             pkgs.docker-compose
             pkgs.opentofu
             pkgs.glibcLocales
+
+            # Pre-commit and Nix formatting
+            pkgs.pre-commit
+            pkgs.nixfmt-rfc-style
           ];
 
           shellHook = ''
