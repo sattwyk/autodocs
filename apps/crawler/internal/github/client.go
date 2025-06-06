@@ -300,9 +300,7 @@ func ParseRepositoryURL(repoURL string) (owner, repo string, err error) {
 
 	// Handle different URL formats
 	path := strings.Trim(parsed.Path, "/")
-	if strings.HasSuffix(path, ".git") {
-		path = strings.TrimSuffix(path, ".git")
-	}
+	path = strings.TrimSuffix(path, ".git")
 
 	parts := strings.Split(path, "/")
 	if len(parts) != 2 {

@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
+
+	"github.com/joho/godotenv"
 )
 
 // Config holds all configuration for the crawler service
@@ -35,6 +38,10 @@ type Config struct {
 	MaxFileSize          int64 // in bytes
 	MaxConcurrentFetches int
 
+	// File filtering
+	AllowedExtensions     []string // allowed file extensions
+	EnableBinaryDetection bool     // enable binary file detection
+
 	// Observability
 	LogLevel    string
 	MetricsPath string
@@ -45,6 +52,9 @@ type Config struct {
 
 // Load creates a new Config by reading from environment variables
 func Load() (*Config, error) {
+	// Load .env file if it exists (ignore errors if file doesn't exist)
+	_ = godotenv.Load()
+
 	cfg := &Config{
 		// Default values
 		Port:                  getEnvOrDefault("PORT", "8080"),
@@ -60,6 +70,23 @@ func Load() (*Config, error) {
 		LogLevel:              getEnvOrDefault("LOG_LEVEL", "info"),
 		MetricsPath:           getEnvOrDefault("METRICS_PATH", "/metrics"),
 		Environment:           getEnvOrDefault("ENVIRONMENT", "development"),
+		EnableBinaryDetection: getEnvAsBoolOrDefault("ENABLE_BINARY_DETECTION", true),
+	}
+
+	// Load allowed extensions
+	allowedExtensionsStr := getEnvOrDefault("ALLOWED_EXTENSIONS",
+		".go,.js,.ts,.jsx,.tsx,.py,.java,.cpp,.c,.h,.hpp,.cs,.rb,.php,.rs,.swift,.kt,.scala,.sh,.bash,.zsh,.fish,.ps1,.bat,.cmd,.yaml,.yml,.json,.xml,.toml,.ini,.cfg,.conf,.md,.rst,.txt,.sql,.r,.m,.pl,.lua,.vim,.el,.clj,.hs,.fs,.ml,.pas,.ada,.cob,.f90,.pro,.asm,.s,.lisp,.scm,.tcl,.awk,.sed,.dockerfile,.makefile,.cmake,.gradle,.maven,.sbt,.cabal,.stack,.cargo,.gemfile,.requirements,.setup,.pipfile,.poetry,.pom,.build,.project,.solution")
+
+	if allowedExtensionsStr != "" {
+		extensions := strings.Split(allowedExtensionsStr, ",")
+		for i, ext := range extensions {
+			extensions[i] = strings.TrimSpace(strings.ToLower(ext))
+			// Ensure extensions start with dot
+			if !strings.HasPrefix(extensions[i], ".") {
+				extensions[i] = "." + extensions[i]
+			}
+		}
+		cfg.AllowedExtensions = extensions
 	}
 
 	// Required environment variables
@@ -161,6 +188,15 @@ func getEnvAsInt64OrDefault(key string, defaultValue int64) int64 {
 	if value := os.Getenv(key); value != "" {
 		if intValue, err := strconv.ParseInt(value, 10, 64); err == nil {
 			return intValue
+		}
+	}
+	return defaultValue
+}
+
+func getEnvAsBoolOrDefault(key string, defaultValue bool) bool {
+	if value := os.Getenv(key); value != "" {
+		if boolValue, err := strconv.ParseBool(value); err == nil {
+			return boolValue
 		}
 	}
 	return defaultValue

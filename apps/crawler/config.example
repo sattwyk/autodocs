@@ -39,6 +39,25 @@ RETRY_BACKOFF_MS_BASE=1000
 # Resource Limits
 MAX_FILE_SIZE=10485760  # 10MB in bytes
 
+# File Filtering Configuration
+# Enable binary file detection (recommended)
+ENABLE_BINARY_DETECTION=true
+
+# Allowed file extensions (comma-separated, leave empty to allow all)
+# Default includes most programming languages and config files
+ALLOWED_EXTENSIONS=.go,.js,.ts,.jsx,.tsx,.py,.java,.cpp,.c,.h,.hpp,.cs,.rb,.php,.rs,.swift,.kt,.scala,.sh,.bash,.zsh,.fish,.ps1,.bat,.cmd,.yaml,.yml,.json,.xml,.toml,.ini,.cfg,.conf,.md,.rst,.txt,.sql,.r,.m,.pl,.lua,.vim,.el,.clj,.hs,.fs,.ml,.pas,.ada,.cob,.f90,.pro,.asm,.s,.lisp,.scm,.tcl,.awk,.sed,.dockerfile,.makefile,.cmake,.gradle,.maven,.sbt,.cabal,.stack,.cargo,.gemfile,.requirements,.setup,.pipfile,.poetry,.pom,.build,.project,.solution
+
+# Examples for specific language stacks:
+
+# JavaScript/Node.js only:
+# ALLOWED_EXTENSIONS=.js,.ts,.jsx,.tsx,.json,.md,.yml,.yaml
+
+# Python only:
+# ALLOWED_EXTENSIONS=.py,.pyx,.pyi,.yaml,.yml,.json,.txt,.md,.rst,.toml,.cfg,.ini
+
+# Go only:
+# ALLOWED_EXTENSIONS=.go,.mod,.sum,.yaml,.yml,.json,.md,.txt
+
 # Observability
 LOG_LEVEL=info
 METRICS_PATH=/metrics
@@ -63,3 +82,4 @@ METRICS_PATH=/metrics
 # MAX_WORKERS=100
 # API_RATE_LIMIT_THRESHOLD=200
 # FETCH_TIMEOUT_MS=60000
+# ENABLE_BINARY_DETECTION=true
