@@ -7,9 +7,12 @@ A production-grade Go service for crawling GitHub repositories with high concurr
 - **High Concurrency**: Configurable worker pool with thousands of files processed in parallel
 - **GitHub Integration**: Supports both Personal Access Tokens (PAT) and GitHub App authentication
 - **Rate Limiting**: Intelligent rate limiting to respect GitHub API limits
+- **Adaptive Rate Limiting**: Automatically adjusts request rate based on GitHub's response headers
 - **Error Handling**: Comprehensive retry logic with exponential backoff
 - **Observability**: Prometheus metrics and structured logging
 - **Resource Efficiency**: Memory-efficient streaming and configurable file size limits
+- **Memory Management**: Automatic memory pressure detection and response
+- **Task Pausing**: Pauses task processing instead of dropping during high load
 - **Path Filtering**: Optional filtering to crawl specific directories
 - **Graceful Shutdown**: Proper cleanup and resource management
 
@@ -118,6 +121,14 @@ Service information endpoint.
 | `RETRY_BACKOFF_MS_BASE` | `1000` | Base backoff time in milliseconds |
 | `MAX_FILE_SIZE` | `10485760` | Maximum file size in bytes (10MB) |
 | `MAX_CONCURRENT_FETCHES` | `100` | Maximum concurrent file fetches |
+| `MEMORY_LIMIT_PERCENT` | `0.8` | Percentage of system memory to use (0.0-1.0) |
+| `ENABLE_MEMORY_MONITOR` | `true` | Enable automatic memory pressure monitoring |
+| `BACKPRESSURE_THRESHOLD` | `0.8` | Queue depth percentage to trigger backpressure |
+| `TASK_BUFFER_SIZE` | `1000` | Size of buffer for paused tasks |
+| `ENABLE_ADAPTIVE_RATE_LIMIT` | `true` | Enable adaptive rate limiting |
+| `RATE_LIMIT_MIN_RATE` | `1.0` | Minimum requests per second |
+| `RATE_LIMIT_MAX_RATE` | `50.0` | Maximum requests per second |
+| `RATE_LIMIT_ADJUST_FACTOR` | `0.1` | Rate adjustment factor for adaptive limiting |
 | `LOG_LEVEL` | `info` | Log level (debug, info, warn, error) |
 | `METRICS_PATH` | `/metrics` | Prometheus metrics endpoint path |
 | `ENVIRONMENT` | `development` | Environment (development, production) |
@@ -223,13 +234,52 @@ spec:
 
 - Set `MAX_FILE_SIZE` to prevent memory issues with large files
 - Adjust `MAX_CONCURRENT_FETCHES` based on available memory
+- Enable `ENABLE_MEMORY_MONITOR=true` for automatic memory pressure handling
+- Tune `MEMORY_LIMIT_PERCENT` based on your system (default 80%)
 - Monitor `crawler_file_size_bytes` metrics
 
 ### Rate Limiting
 
 - Adjust `API_RATE_LIMIT_THRESHOLD` based on your GitHub plan
+- Enable `ENABLE_ADAPTIVE_RATE_LIMIT=true` for automatic rate adjustment
+- Configure `RATE_LIMIT_MIN_RATE` and `RATE_LIMIT_MAX_RATE` for your needs
 - Monitor `crawler_github_rate_limit_*` metrics
 - Use GitHub Apps for higher rate limits
+
+### Handling Extremely Large Repositories
+
+For repositories with hundreds of thousands of files:
+
+1. **Enable Enhanced Features**:
+
+   ```bash
+   export ENABLE_MEMORY_MONITOR=true
+   export ENABLE_ADAPTIVE_RATE_LIMIT=true
+   export BACKPRESSURE_THRESHOLD=0.7
+   export TASK_BUFFER_SIZE=5000
+   ```
+
+2. **Increase Worker Pool Gradually**:
+
+   ```bash
+   export MAX_WORKERS=200
+   export MAX_CONCURRENT_FETCHES=300
+   ```
+
+3. **Configure Memory Limits**:
+
+   ```bash
+   export MEMORY_LIMIT_PERCENT=0.75
+   export MAX_FILE_SIZE=5242880  # 5MB per file
+   ```
+
+4. **Fine-tune Rate Limiting**:
+
+   ```bash
+   export RATE_LIMIT_MIN_RATE=0.5
+   export RATE_LIMIT_MAX_RATE=30.0
+   export API_RATE_LIMIT_THRESHOLD=1000  # If using GitHub App
+   ```
 
 ## Monitoring
 

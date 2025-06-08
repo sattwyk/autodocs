@@ -38,6 +38,18 @@ type Config struct {
 	MaxFileSize          int64 // in bytes
 	MaxConcurrentFetches int
 
+	// Enhanced resource management
+	MemoryLimitPercent    float64 // Percentage of system memory to use (0-1.0)
+	EnableMemoryMonitor   bool    // Enable memory pressure monitoring
+	BackpressureThreshold float64 // Queue depth percentage to trigger backpressure
+	TaskBufferSize        int     // Size of buffer for paused tasks
+
+	// Adaptive rate limiting
+	EnableAdaptiveRateLimit bool    // Enable adaptive rate limiting
+	RateLimitMinRate        float64 // Minimum requests per second
+	RateLimitMaxRate        float64 // Maximum requests per second
+	RateLimitAdjustFactor   float64 // Rate adjustment factor
+
 	// File filtering
 	AllowedExtensions     []string // allowed file extensions
 	EnableBinaryDetection bool     // enable binary file detection
@@ -57,20 +69,28 @@ func Load() (*Config, error) {
 
 	cfg := &Config{
 		// Default values
-		Port:                  getEnvOrDefault("PORT", "8080"),
-		Host:                  getEnvOrDefault("HOST", "0.0.0.0"),
-		GitHubBaseURL:         getEnvOrDefault("GITHUB_BASE_URL", "https://api.github.com"),
-		MaxWorkers:            getEnvAsIntOrDefault("MAX_WORKERS", 50),
-		APIRateLimitThreshold: getEnvAsIntOrDefault("API_RATE_LIMIT_THRESHOLD", 100),
-		FetchTimeoutMS:        getEnvAsIntOrDefault("FETCH_TIMEOUT_MS", 30000),
-		RetryMaxAttempts:      getEnvAsIntOrDefault("RETRY_MAX_ATTEMPTS", 3),
-		RetryBackoffBaseMS:    getEnvAsIntOrDefault("RETRY_BACKOFF_MS_BASE", 1000),
-		MaxFileSize:           getEnvAsInt64OrDefault("MAX_FILE_SIZE", 10*1024*1024), // 10MB
-		MaxConcurrentFetches:  getEnvAsIntOrDefault("MAX_CONCURRENT_FETCHES", 100),
-		LogLevel:              getEnvOrDefault("LOG_LEVEL", "info"),
-		MetricsPath:           getEnvOrDefault("METRICS_PATH", "/metrics"),
-		Environment:           getEnvOrDefault("ENVIRONMENT", "development"),
-		EnableBinaryDetection: getEnvAsBoolOrDefault("ENABLE_BINARY_DETECTION", true),
+		Port:                    getEnvOrDefault("PORT", "8080"),
+		Host:                    getEnvOrDefault("HOST", "0.0.0.0"),
+		GitHubBaseURL:           getEnvOrDefault("GITHUB_BASE_URL", "https://api.github.com"),
+		MaxWorkers:              getEnvAsIntOrDefault("MAX_WORKERS", 50),
+		APIRateLimitThreshold:   getEnvAsIntOrDefault("API_RATE_LIMIT_THRESHOLD", 100),
+		FetchTimeoutMS:          getEnvAsIntOrDefault("FETCH_TIMEOUT_MS", 30000),
+		RetryMaxAttempts:        getEnvAsIntOrDefault("RETRY_MAX_ATTEMPTS", 3),
+		RetryBackoffBaseMS:      getEnvAsIntOrDefault("RETRY_BACKOFF_MS_BASE", 1000),
+		MaxFileSize:             getEnvAsInt64OrDefault("MAX_FILE_SIZE", 10*1024*1024), // 10MB
+		MaxConcurrentFetches:    getEnvAsIntOrDefault("MAX_CONCURRENT_FETCHES", 100),
+		MemoryLimitPercent:      getEnvAsFloatOrDefault("MEMORY_LIMIT_PERCENT", 0.8),
+		EnableMemoryMonitor:     getEnvAsBoolOrDefault("ENABLE_MEMORY_MONITOR", true),
+		BackpressureThreshold:   getEnvAsFloatOrDefault("BACKPRESSURE_THRESHOLD", 0.8),
+		TaskBufferSize:          getEnvAsIntOrDefault("TASK_BUFFER_SIZE", 1000),
+		EnableAdaptiveRateLimit: getEnvAsBoolOrDefault("ENABLE_ADAPTIVE_RATE_LIMIT", true),
+		RateLimitMinRate:        getEnvAsFloatOrDefault("RATE_LIMIT_MIN_RATE", 1.0),
+		RateLimitMaxRate:        getEnvAsFloatOrDefault("RATE_LIMIT_MAX_RATE", 50.0),
+		RateLimitAdjustFactor:   getEnvAsFloatOrDefault("RATE_LIMIT_ADJUST_FACTOR", 0.1),
+		LogLevel:                getEnvOrDefault("LOG_LEVEL", "info"),
+		MetricsPath:             getEnvOrDefault("METRICS_PATH", "/metrics"),
+		Environment:             getEnvOrDefault("ENVIRONMENT", "development"),
+		EnableBinaryDetection:   getEnvAsBoolOrDefault("ENABLE_BINARY_DETECTION", true),
 	}
 
 	// Load allowed extensions
@@ -197,6 +217,15 @@ func getEnvAsBoolOrDefault(key string, defaultValue bool) bool {
 	if value := os.Getenv(key); value != "" {
 		if boolValue, err := strconv.ParseBool(value); err == nil {
 			return boolValue
+		}
+	}
+	return defaultValue
+}
+
+func getEnvAsFloatOrDefault(key string, defaultValue float64) float64 {
+	if value := os.Getenv(key); value != "" {
+		if floatValue, err := strconv.ParseFloat(value, 64); err == nil {
+			return floatValue
 		}
 	}
 	return defaultValue
